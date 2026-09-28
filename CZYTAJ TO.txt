@@ -22,7 +22,7 @@ Każda oferta to osobna karta: tytuł, firma, miejsce, etykiety (zdalnie,
 wynagrodzenie, umowa, źródło…), krótki opis, a na dole statusy i notatka.
 Kolorowy pasek z lewej pokazuje status (niebieski = nowa, pomarańczowy =
 do aplikowania, zielony = zaaplikowana, szary = odrzucona/nieciekawa).
-Lista jest podzielona na strony po 20 ofert. Przyciski stron są nad
+Lista jest podzielona na strony po 10 ofert. Przyciski stron są nad
 listą i pod nią: "‹ Poprzednia", numery stron, "Następna ›".
 Z klawiatury: Ctrl+→ następna strona, Ctrl+← poprzednia.
 Przewijanie: kółko myszy, dwa palce na touchpadzie, pasek z prawej,

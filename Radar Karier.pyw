@@ -74,7 +74,7 @@ WIDOKI = [
 SORTOWANIE = [("data", "Najnowsze"), ("cv", "Najlepiej dopasowane do CV")]
 PROG_DOPASOWANIA = 50
 
-NA_STRONE = 20         # tyle ofert na jednej stronie listy
+NA_STRONE = 10         # tyle ofert na jednej stronie listy
 MAX_SZEROKOSC = 1100   # szerokosc kolumny z kartami (jak na stronie www)
 
 KOLORY = {
@@ -682,7 +682,7 @@ class Aplikacja:
             return
         self.do_przewiniecia += int(piksele)
         if self.timer_przewijania is None:
-            self.timer_przewijania = self.root.after(12, self._przewin_teraz)
+            self.timer_przewijania = self.root.after(16, self._przewin_teraz)   # ~60 klatek/s
 
     def _przewin_teraz(self):
         self.timer_przewijania = None
