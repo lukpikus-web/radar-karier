@@ -58,7 +58,9 @@ def teraz():
 
 
 def otworz(sciezka):
-    conn = sqlite3.connect(sciezka, timeout=30)
+    # check_same_thread=False: w nowej wersji baze obsluguje serwer z kilku watkow
+    # (pod wspolna blokada - patrz serwer.py)
+    conn = sqlite3.connect(sciezka, timeout=30, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA synchronous=FULL")
     conn.executescript(SCHEMAT)

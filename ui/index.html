@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radar Karier</title>
+<link rel="stylesheet" href="styl.css">
+<link rel="icon" href="ikona.svg" type="image/svg+xml">
+</head>
+<body>
+<div class="strona">
+  <header class="naglowek">
+    <div>
+      <h1>Radar Karier</h1>
+      <div class="podtytul" id="podtytul"></div>
+    </div>
+    <div class="przyciski">
+      <div class="pasek-postepu" id="pasek"></div>
+      <button class="btn" id="b-cv">Dodaj CV</button>
+      <button class="btn" id="b-ustawienia">⚙ Ustawienia</button>
+      <button class="btn glowny" id="b-odswiez">Odśwież oferty</button>
+    </div>
+  </header>
+
+  <div class="liczniki" id="liczniki"></div>
+
+  <section class="panel">
+    <input class="szukaj" id="szukaj" type="search" placeholder="Szukaj w tytule, firmie, opisie…" autocomplete="off">
+    <div class="wiersz"><span class="etyk">Źródło</span><div class="chipy" data-grupa="zrodla"></div></div>
+    <div class="wiersz"><span class="etyk">Kategoria</span><div class="chipy" data-grupa="kategorie"></div></div>
+    <div class="wiersz"><span class="etyk">Status</span><div class="chipy" data-grupa="statusy"></div></div>
+    <div class="wiersz"><span class="etyk">Widok</span><div class="chipy" data-grupa="widok"></div>
+      <button class="link" id="wyczysc-filtry" hidden>✕ Wyczyść filtry</button></div>
+    <div class="wiersz"><span class="etyk">Sortuj</span><div class="chipy" data-grupa="sort"></div></div>
+  </section>
+
+  <div class="info-listy" id="info-listy"></div>
+  <main class="lista" id="lista"></main>
+  <div class="zaladuj-wiecej" id="wiecej"></div>
+</div>
+<div class="stopka-okna" id="stopka"></div>
+<div class="menu" id="menu">
+  <button data-menu="otworz">Otwórz ofertę w przeglądarce</button>
+  <button data-menu="kopiuj">Kopiuj link</button>
+  <button data-menu="szczegoly">Pokaż / zwiń obowiązki i wymagania</button>
+</div>
+
+<!-- okno: Ustawienia -->
+<dialog id="d-ustawienia">
+  <form method="dialog" class="okno" id="f-ustawienia">
+    <div class="zakladki">
+      <button type="button" class="zakladka wl" data-zakladka="0">Stanowiska i słowa kluczowe</button>
+      <button type="button" class="zakladka" data-zakladka="1">Filtry</button>
+      <button type="button" class="zakladka" data-zakladka="2">Lokalizacja i źródła</button>
+    </div>
+    <div class="okno-tresc">
+      <section data-panel="0">
+        <p class="opis-pola">Aplikacja szuka ofert po tych frazach. Wpisz nazwę stanowiska albo słowo kluczowe, np. „specjalista ds. marketingu”, „google ads”. Kategoria to Twoja etykieta — pojawi się w filtrach. Frazy „Z CV” aplikacja wzięła z Twojego CV — możesz je zmieniać i usuwać.</p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button type="button" class="btn glowny maly" id="dodaj-fraze">+ Dodaj frazę</button>
+          <span class="odstep" style="flex:1"></span>
+          <span class="licznik-fraz" id="licznik-fraz"></span>
+        </div>
+        <table class="frazy"><thead id="frazy-naglowek"></thead><tbody id="frazy"></tbody></table>
+      </section>
+      <section data-panel="1" hidden>
+        <div class="dwie-kolumny">
+          <div>
+            <h3>Pomijaj oferty, których tytuł zawiera</h3>
+            <p class="opis-pola">Jedno słowo lub fraza w linii (albo po przecinku), np. senior, kierownik, developer. Wielkość liter i polskie znaki nie mają znaczenia.</p>
+            <textarea class="pole" id="u-stop" rows="14"></textarea>
+          </div>
+          <div>
+            <h3>Poziomy stanowisk, które Cię interesują</h3>
+            <p class="opis-pola">Dotyczy ofert, które podają poziom (pracuj.pl, RocketJobs).</p>
+            <div id="u-poziomy"></div>
+            <h3>Pomijaj oferty wymagające języków</h3>
+            <p class="opis-pola">Szukane w tytule oferty, np. german, niemiecki.</p>
+            <textarea class="pole" id="u-jezyki" rows="5"></textarea>
+          </div>
+        </div>
+      </section>
+      <section data-panel="2" hidden>
+        <div class="dwie-kolumny">
+          <div>
+            <h3>Miasto</h3>
+            <p class="opis-pola">Puste = oferty z całej Polski.</p>
+            <input class="pole" id="u-miasto">
+            <h3>Miejscowości w okolicy</h3>
+            <p class="opis-pola">Oferty z tych miejscowości też się liczą. Jedna w linii.</p>
+            <textarea class="pole" id="u-okolice" rows="8"></textarea>
+            <label class="wybor"><input type="checkbox" id="u-zdalne"> Pokazuj też oferty zdalne z całej Polski (w tym zlecenia)</label>
+          </div>
+          <div>
+            <h3>Przeszukiwane serwisy</h3>
+            <div id="u-zrodla"></div>
+            <h3 style="margin-top:26px">Nowa osoba?</h3>
+            <p class="opis-pola">Jeśli dostałeś aplikację od kogoś innego, na liście są jego oferty i statusy. Ustaw swoje frazy i filtry, zapisz, a potem wyczyść listę.</p>
+            <button type="button" class="btn niebezpieczny maly" id="zacznij-od-zera">Usuń wszystkie oferty i zacznij od zera…</button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="okno-przyciski">
+      <button type="button" class="btn maly" id="u-domyslne">Przywróć domyślne</button>
+      <span class="odstep"></span>
+      <button type="button" class="btn" data-zamknij>Anuluj</button>
+      <button type="button" class="btn glowny" id="u-zapisz">Zapisz</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- okno: Moje CV -->
+<dialog id="d-cv">
+  <div class="okno">
+    <div class="okno-tresc">
+      <h2>Moje CV</h2>
+      <div class="dwie-kolumny">
+        <div>
+          <h3>Treść CV</h3>
+          <label class="upusc" id="upusc">
+            <input type="file" id="cv-plik" accept=".pdf,.docx,.odt,.txt" hidden>
+            <b style="color:var(--akcent)">Wybierz plik z CV</b> albo upuść go tutaj (PDF, DOCX, ODT, TXT)
+          </label>
+          <div class="opis-pola" id="cv-info"></div>
+          <textarea class="pole" id="cv-tekst" rows="16" placeholder="…albo wklej tu tekst CV"></textarea>
+        </div>
+        <div>
+          <h3>Twoje umiejętności</h3>
+          <p class="opis-pola">Z nich liczy się dopasowanie. Jedna w linii — dopisz, czego brakuje, usuń, czego nie chcesz.</p>
+          <textarea class="pole" id="cv-umiejetnosci" rows="15"></textarea>
+          <button type="button" class="btn maly" id="cv-wykryj" style="margin-top:6px">Wykryj umiejętności z treści CV</button>
+        </div>
+      </div>
+    </div>
+    <div class="okno-przyciski">
+      <button type="button" class="btn maly niebezpieczny" id="cv-usun">Usuń CV</button>
+      <span class="podpowiedz">CV zostaje na tym komputerze — nic nie jest wysyłane do internetu.</span>
+      <span class="odstep"></span>
+      <button type="button" class="btn" data-zamknij>Anuluj</button>
+      <button type="button" class="btn glowny" id="cv-zapisz">Zapisz</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- okno: pytanie (Tak/Nie itp.) -->
+<dialog id="d-pytanie" class="male">
+  <div class="okno">
+    <div class="okno-tresc">
+      <h2 id="p-tytul"></h2>
+      <div id="p-tresc"></div>
+    </div>
+    <div class="okno-przyciski"><span class="odstep"></span><span id="p-przyciski" style="display:flex;gap:8px"></span></div>
+  </div>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>

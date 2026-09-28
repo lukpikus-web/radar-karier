@@ -7,3 +7,7 @@ oferty.json
 radar.log
 radar.log.stary
 kopie/
+# pliki robocze okna aplikacji
+.radar-okno
+.okno-przegladarki/
+.cv-tymczasowe*

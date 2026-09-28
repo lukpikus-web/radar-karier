@@ -6,14 +6,22 @@ URUCHAMIANIE
 Kliknij dwa razy plik  "Radar Karier.pyw"
 (albo start.bat — robi to samo).
 
-Otworzy się zwykłe okno programu — bez przeglądarki i bez czarnej konsoli.
+Otworzy się okno aplikacji — to Microsoft Edge (albo Chrome) w trybie
+aplikacji: osobne okno bez paska adresu, rysowane przez kartę graficzną,
+dlatego przewijanie jest płynne. Gdy nie ma ani Edge, ani Chrome, aplikacja
+otworzy się jako karta w Twojej domyślnej przeglądarce.
+Zamknięcie okna zamyka aplikację (po kilkunastu sekundach).
+Oferty otwierają się w Twojej zwykłej przeglądarce, gdzie jesteś zalogowany.
+
 Po starcie aplikacja pokazuje oferty zapisane w bazie — NIE pobiera nowych
 sama. Żeby pobrać świeże oferty, kliknij niebieski przycisk "Odśwież oferty"
-(albo F5). Pasek postępu obok przycisku pokazuje, że pracuje; możesz w tym
-czasie normalnie przeglądać i oznaczać oferty.
+(albo F5). Możesz w tym czasie normalnie przeglądać i oznaczać oferty.
 
 Skrót na pulpicie: kliknij prawym na "Radar Karier.pyw"
 → Wyślij do → Pulpit (utwórz skrót).
+
+Poprzednia wersja okna (bez Edge): "Radar Karier - stara wersja.pyw".
+Korzysta z tej samej bazy radar.db.
 
 
 WYGLĄD
@@ -22,16 +30,15 @@ Każda oferta to osobna karta: tytuł, firma, miejsce, etykiety (zdalnie,
 wynagrodzenie, umowa, źródło…), krótki opis, a na dole statusy i notatka.
 Kolorowy pasek z lewej pokazuje status (niebieski = nowa, pomarańczowy =
 do aplikowania, zielony = zaaplikowana, szary = odrzucona/nieciekawa).
-Lista jest podzielona na strony po 10 ofert. Przyciski stron są nad
-listą i pod nią: "‹ Poprzednia", numery stron, "Następna ›".
-Z klawiatury: Ctrl+→ następna strona, Ctrl+← poprzednia.
-Przewijanie: kółko myszy, dwa palce na touchpadzie, pasek z prawej,
-klawisze PageUp / PageDown / Home / End.
+Lista jest jedna, bez stron — kolejne karty doczytują się same, gdy
+przewijasz w dół. Kliknięcie tytułu albo "Otwórz ofertę ↗" otwiera ofertę;
+prawy przycisk myszy na karcie: otwórz / kopiuj link / obowiązki.
+Okno dopasowuje się też do wąskiego ekranu (np. telefonu).
 
 
 DOPASOWANIE DO CV (przycisk "Dodaj CV" / "Moje CV" u góry)
 ------------------------------------------------------------
-1. Kliknij "Wczytaj z pliku" i wybierz CV (PDF, DOCX, ODT albo TXT)
+1. Kliknij "Wybierz plik z CV" (albo upuść plik) i wybierz CV (PDF, DOCX, ODT albo TXT)
    — albo wklej tekst CV. Sprawdź, czy tekst wczytał się poprawnie.
 2. Po prawej jest lista Twoich umiejętności wykryta z CV. Dopisz, czego
    brakuje (jedna w linii), usuń, czego nie chcesz. Z tej listy liczy
@@ -69,7 +76,7 @@ STATUSY I NOTATKI
   - Status: kliknij Nowa / Do aplikowania / Zaaplikowana / Odrzucona /
     Nieciekawa bezpośrednio na karcie oferty.
   - Notatka: kliknij pole "notatka…" po prawej na karcie i pisz;
-    zapisuje się sama (Enter kończy pisanie, Esc anuluje).
+    zapisuje się sama (Enter kończy pisanie).
 
 Każda zmiana zapisuje się NATYCHMIAST do pliku radar.db, a na dole okna
 pojawia się "✓ zapisany" z godziną. Gdyby zapis się nie udał, wyskoczy

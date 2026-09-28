@@ -8,10 +8,6 @@ where pythonw >nul 2>nul && set PYW=pythonw
 if "%PYW%"=="" (where pyw >nul 2>nul && set PYW=pyw)
 if "%PYW%"=="" goto brak
 
-set PYC=python
-where python >nul 2>nul || set PYC=py
-%PYC% -c "import tkinter" >nul 2>nul || goto brak_tk
-
 start "" %PYW% "Radar Karier.pyw"
 exit /b 0
 
