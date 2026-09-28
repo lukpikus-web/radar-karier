@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+# prywatne dane uzytkownika - zostaja tylko na komputerze
+radar.db
+radar.db-journal
+oferty.json
+radar.log
+radar.log.stary
+kopie/
