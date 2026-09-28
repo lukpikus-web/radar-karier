@@ -19,6 +19,7 @@ import os
 import queue
 import secrets
 import shutil
+import socket
 import subprocess
 import sys
 import threading
@@ -57,6 +58,9 @@ import dopasowanie   # noqa: E402
 import radar         # noqa: E402
 
 BEZ_SYGNALU_S = 25        # okno nie odzywa sie tyle sekund -> zamykamy aplikacje
+PORT_WIFI = 8765          # adres dla telefonu: http://<adres-komputera>:8765
+PROBY_PIN = 5             # tyle blednych PIN-ow z jednego telefonu...
+BLOKADA_PIN_S = 15 * 60   # ...i blokada na 15 minut
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +97,9 @@ class Aplikacja:
         self.bledy_szczeg = {}
         threading.Thread(target=self._pracownik_szczegolow, daemon=True).start()
         self.ostatni_sygnal = time.time()
+        self.serwer_wifi = None
+        self.blad_wifi = ""
+        self.nieudane_piny = {}
         self._przelicz_dopasowania()
 
     def _json_meta(self, klucz):
@@ -309,6 +316,71 @@ class Aplikacja:
             self.zmiana()
             time.sleep(0.5)
 
+    # --- dostep z telefonu przez Wi-Fi --------------------------------------
+    def wifi_stan(self):
+        wl = self.serwer_wifi is not None
+        return {"wlaczone": wl, "pin": baza.meta_get(self.conn, "wifi_pin") if wl else "",
+                "adresy": ["http://%s:%d" % (ip, self.serwer_wifi.server_address[1])
+                           for ip in adresy_komputera()] if wl else [],
+                "blad": self.blad_wifi}
+
+    def wifi(self, wlacz, nowy_pin=False):
+        with self.blokada:
+            if nowy_pin or not baza.meta_get(self.conn, "wifi_pin"):
+                baza.meta_set(self.conn, "wifi_pin", "%06d" % secrets.randbelow(10 ** 6))
+                baza.meta_set(self.conn, "wifi_klucz", secrets.token_urlsafe(24))   # wylogowuje telefony
+            baza.meta_set(self.conn, "wifi", "1" if wlacz else "")
+        if wlacz:
+            self.uruchom_wifi()
+        else:
+            self.zatrzymaj_wifi()
+        return self.wifi_stan()
+
+    def uruchom_wifi(self):
+        self.blad_wifi = ""
+        if self.serwer_wifi is not None:
+            return
+        for port in range(PORT_WIFI, PORT_WIFI + 10):
+            try:
+                srv = ThreadingHTTPServer(("0.0.0.0", port), Obsluga)
+                break
+            except OSError:
+                continue
+        else:
+            self.blad_wifi = "nie udało się otworzyć portu %d-%d" % (PORT_WIFI, PORT_WIFI + 9)
+            LOG.warning("Wi-Fi: %s", self.blad_wifi)
+            return
+        srv.daemon_threads = True
+        srv.zdalny = True
+        self.serwer_wifi = srv
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        LOG.info("Dostep z telefonu wlaczony: port %d", srv.server_address[1])
+
+    def zatrzymaj_wifi(self):
+        srv, self.serwer_wifi = self.serwer_wifi, None
+        if srv is not None:
+            srv.shutdown()
+            srv.server_close()
+            LOG.info("Dostep z telefonu wylaczony")
+
+    def zaloguj_telefon(self, pin, ip):
+        teraz = time.time()
+        proby, do = self.nieudane_piny.get(ip, (0, 0))
+        if teraz < do:
+            raise BladUzytkownika("Za dużo błędnych prób. Spróbuj za %d min." % ((do - teraz) // 60 + 1))
+        with self.blokada:
+            dobry = baza.meta_get(self.conn, "wifi_pin") or ""
+            klucz = baza.meta_get(self.conn, "wifi_klucz") or ""
+        if dobry and secrets.compare_digest(str(pin).strip(), dobry):
+            self.nieudane_piny.pop(ip, None)
+            LOG.info("Telefon %s zalogowany", ip)
+            return {"klucz": klucz}
+        proby += 1
+        self.nieudane_piny[ip] = (0, teraz + BLOKADA_PIN_S) if proby >= PROBY_PIN else (proby, 0)
+        LOG.warning("Bledny PIN z %s (%d)", ip, proby)
+        raise BladUzytkownika("Zły PIN." if proby < PROBY_PIN else
+                              "Za dużo błędnych prób. Spróbuj za %d min." % (BLOKADA_PIN_S // 60))
+
     # --- pobieranie ofert ----------------------------------------------------
     def _pomin_linkedin(self):
         if not radar.WLACZONE_ZRODLA.get("LinkedIn"):
@@ -392,6 +464,27 @@ class Aplikacja:
         self.zmiana()
 
 
+def adresy_komputera():
+    """Adresy tego komputera w sieci domowej (np. 192.168.1.23)."""
+    adresy = []
+    try:                                   # adres, przez ktory komputer wychodzi do sieci
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("10.255.255.255", 1))   # nic nie jest wysylane
+            adresy.append(s.getsockname()[0])
+    except OSError:
+        pass
+    try:
+        for ip in socket.gethostbyname_ex(socket.gethostname())[2]:
+            if ip not in adresy:
+                adresy.append(ip)
+    except OSError:
+        pass
+    prywatne = [ip for ip in adresy if not ip.startswith("127.") and
+                (ip.startswith(("192.168.", "10.")) or
+                 (ip.startswith("172.") and 16 <= int(ip.split(".")[1]) <= 31))]
+    return prywatne or [ip for ip in adresy if not ip.startswith("127.")]
+
+
 def otworz_link(url):
     """Oferta otwiera sie w Twojej zwyklej przegladarce (tam, gdzie jestes zalogowany)."""
     if not url.startswith(("http://", "https://")):
@@ -435,8 +528,16 @@ class Obsluga(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             pass                           # okno zamkniete w trakcie - nic sie nie stalo
 
+    def _zdalny(self):
+        return getattr(self.server, "zdalny", False)
+
     def _dozwolone(self):
-        return secrets.compare_digest(self.headers.get("X-Klucz", ""), self.klucz)
+        podany = self.headers.get("X-Klucz", "")
+        if self._zdalny():                     # telefon: klucz z logowania PIN-em
+            with self.app.blokada:
+                klucz = baza.meta_get(self.app.conn, "wifi_klucz") or ""
+            return bool(klucz) and secrets.compare_digest(podany, klucz)
+        return secrets.compare_digest(podany, self.klucz)
 
     def do_GET(self):
         sciezka = self.path.split("?", 1)[0]
@@ -452,7 +553,7 @@ class Obsluga(BaseHTTPRequestHandler):
             return self._wyslij(200, {"wersja": self.app.wersja, "postep": self.app.postep,
                                       "pobierane": sorted(self.app.pobierane)})
         if sciezka == "/api/zyje":             # dla drugiego uruchomienia: czy aplikacja dziala?
-            return self._wyslij(200, {"ok": True})
+            return self._wyslij(200, {"ok": True, "zdalny": self._zdalny()})
         # pliki okna (ui/)
         if sciezka in ("/", ""):
             sciezka = "/index.html"
@@ -464,14 +565,25 @@ class Obsluga(BaseHTTPRequestHandler):
         return self._wyslij(200, tresc, TYPY.get(os.path.splitext(pelna)[1], "application/octet-stream"))
 
     def do_POST(self):
+        polecenie = self.path.split("?", 1)[0].rsplit("/", 1)[-1]
+        if polecenie == "zaloguj" and self._zdalny():     # telefon podaje PIN
+            try:
+                dlugosc = min(int(self.headers.get("Content-Length") or 0), 1000)
+                d = json.loads(self.rfile.read(dlugosc).decode("utf-8") or "{}")
+                return self._wyslij(200, self.app.zaloguj_telefon(d.get("pin", ""), self.client_address[0]))
+            except BladUzytkownika as e:
+                return self._wyslij(403, {"blad": str(e)})
+            except ValueError:
+                return self._wyslij(400, {"blad": "złe dane"})
         if not self._dozwolone():
             return self._wyslij(403, {"blad": "brak dostępu"})
+        if self._zdalny() and polecenie in ("wifi", "wifi_stan", "zacznij_od_zera", "otworz"):
+            return self._wyslij(403, {"blad": "To można zrobić tylko na komputerze."})
         self.app.ostatni_sygnal = time.time()
         dlugosc = int(self.headers.get("Content-Length") or 0)
         if dlugosc > 20_000_000:
             return self._wyslij(413, {"blad": "plik jest za duży"})
         surowe = self.rfile.read(dlugosc) if dlugosc else b""
-        polecenie = self.path.split("?", 1)[0].rsplit("/", 1)[-1]
         a = self.app
         try:
             if polecenie == "cv_plik":             # tresc pliku CV w ciele zapytania
@@ -491,6 +603,8 @@ class Obsluga(BaseHTTPRequestHandler):
                 "odswiez": a.odswiez,
                 "przerwij": lambda: (a.przerwij.set(), {})[1],
                 "otworz": lambda: otworz_link(d.get("url", "")),
+                "wifi_stan": a.wifi_stan,
+                "wifi": lambda: a.wifi(bool(d.get("wlacz")), bool(d.get("nowy_pin"))),
             }
             if polecenie not in akcje:
                 return self._wyslij(404, {"blad": "nieznane polecenie"})
@@ -582,9 +696,12 @@ def main():
             time.sleep(5)
             if time.time() - app.ostatni_sygnal > BEZ_SYGNALU_S and not (app.watek and app.watek.is_alive()):
                 LOG.info("Okno zamkniete - koncze")
+                app.zatrzymaj_wifi()
                 serwer.shutdown()
                 return
     app.ostatni_sygnal = time.time() + 30          # czas na otwarcie okna
+    if baza.meta_get(app.conn, "wifi"):            # dostep z telefonu byl wlaczony
+        app.uruchom_wifi()
     threading.Thread(target=straznik, daemon=True).start()
     otworz_okno("http://127.0.0.1:%d/#%s" % (port, Obsluga.klucz))
     try:

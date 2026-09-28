@@ -52,6 +52,7 @@
       <button type="button" class="zakladka wl" data-zakladka="0">Stanowiska i słowa kluczowe</button>
       <button type="button" class="zakladka" data-zakladka="1">Filtry</button>
       <button type="button" class="zakladka" data-zakladka="2">Lokalizacja i źródła</button>
+      <button type="button" class="zakladka" data-zakladka="3">Telefon</button>
     </div>
     <div class="okno-tresc">
       <section data-panel="0">
@@ -94,10 +95,35 @@
           <div>
             <h3>Przeszukiwane serwisy</h3>
             <div id="u-zrodla"></div>
+            <div id="nowa-osoba">
             <h3 style="margin-top:26px">Nowa osoba?</h3>
             <p class="opis-pola">Jeśli dostałeś aplikację od kogoś innego, na liście są jego oferty i statusy. Ustaw swoje frazy i filtry, zapisz, a potem wyczyść listę.</p>
             <button type="button" class="btn niebezpieczny maly" id="zacznij-od-zera">Usuń wszystkie oferty i zacznij od zera…</button>
+            </div>
           </div>
+        </div>
+      </section>
+      <section data-panel="3" hidden>
+        <div id="wifi-komputer">
+          <h3>Radar Karier na telefonie (przez Wi-Fi)</h3>
+          <p class="opis-pola">Telefon musi być w tej samej sieci Wi-Fi co komputer, a Radar Karier na komputerze musi być otwarty. Przy pierwszym włączeniu Windows może zapytać o dostęp do sieci — wybierz „Zezwól” (sieć prywatna).</p>
+          <label class="wybor"><input type="checkbox" id="wifi-wlacz"> Włącz dostęp z telefonu</label>
+          <div id="wifi-dane" hidden>
+            <p class="opis-pola">Zeskanuj kod aparatem telefonu — aplikacja otworzy się i zaloguje sama:</p>
+            <div id="wifi-qr" class="wifi-qr"></div>
+            <p class="opis-pola">Albo ręcznie: 1. na telefonie otwórz przeglądarkę i wpisz adres:</p>
+            <div id="wifi-adresy" class="wifi-adres"></div>
+            <p class="opis-pola">2. Podaj PIN:</p>
+            <div id="wifi-pin" class="wifi-pin"></div>
+            <p class="opis-pola">Telefon zapamięta logowanie — następnym razem wystarczy otworzyć ten sam adres (dodaj go do ekranu głównego). Oferty, statusy, notatki, CV i filtry są wspólne z komputerem. Zmiana PIN-u wyloguje wszystkie telefony.</p>
+            <button type="button" class="btn maly" id="wifi-nowy-pin">Zmień PIN</button>
+          </div>
+          <p class="opis-pola blad-wifi" id="wifi-blad" hidden></p>
+        </div>
+        <div id="wifi-telefon" hidden>
+          <h3>Jesteś na telefonie</h3>
+          <p class="opis-pola">Dostęp z telefonu włącza się i wyłącza na komputerze (Ustawienia → Telefon). Zmiany, które tu zrobisz — statusy, notatki, ustawienia — zapisują się na komputerze.</p>
+          <button type="button" class="btn maly" id="wifi-wyloguj">Wyloguj ten telefon</button>
         </div>
       </section>
     </div>
@@ -154,6 +180,7 @@
   </div>
 </dialog>
 
+<script src="qr.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

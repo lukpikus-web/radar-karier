@@ -1,7 +1,13 @@
 // Radar Karier - okno aplikacji. Dane trzyma serwer (serwer.py) w radar.db.
 "use strict";
 
-const KLUCZ = location.hash.slice(1);
+// na komputerze klucz przychodzi w adresie okna; telefon dostaje go po podaniu PIN-u
+const ZDALNY = !["127.0.0.1", "localhost", "[::1]"].includes(location.hostname);
+function czytajKlucz() { try { return localStorage.getItem("radar-klucz") || ""; } catch (e) { return ""; } }
+function zapiszKlucz(k) { try { if (k) localStorage.setItem("radar-klucz", k); else localStorage.removeItem("radar-klucz"); } catch (e) { /* bez pamieci */ } }
+const KLUCZ = ZDALNY ? czytajKlucz() : location.hash.slice(1);
+const BRAK_POLACZENIA = ZDALNY ? "Brak połączenia z komputerem — sprawdź, czy Radar Karier jest tam otwarty i czy telefon jest w tej samej sieci Wi-Fi."
+                               : "Brak połączenia z aplikacją — uruchom ją ponownie z pliku Radar Karier.pyw";
 const STATUSY = [["nowa", "Nowa"], ["do_zrobienia", "Do aplikowania"], ["zaaplikowana", "Zaaplikowana"],
                  ["odrzucona", "Odrzucona"], ["nieciekawa", "Nieciekawa"]];
 const NAZWA_STATUSU = Object.fromEntries(STATUSY);
@@ -41,6 +47,7 @@ async function api(polecenie, dane) {
 }
 async function pobierzStan() {
   const odp = await fetch("/api/stan", { headers: { "X-Klucz": KLUCZ } });
+  if (odp.status === 403 && ZDALNY) throw new Error("ZALOGUJ");
   if (!odp.ok) throw new Error("brak dostępu - uruchom aplikację ponownie z pliku Radar Karier.pyw");
   S = await odp.json();
 }
@@ -259,6 +266,7 @@ async function pobierzOpis(id) {
 }
 function otworz(o) {
   // oferta otwiera sie w Twojej zwyklej przegladarce (tam jestes zalogowany)
+  if (ZDALNY) { window.open(o.url, "_blank", "noopener"); return; }
   api("otworz", { url: o.url }).then(() => stopka("Otwarto w przeglądarce: " + o.url)).catch(() => window.open(o.url, "_blank"));
 }
 
@@ -299,7 +307,7 @@ $("#lista").addEventListener("contextmenu", (e) => {
   m.style.left = Math.min(e.clientX, innerWidth - m.offsetWidth - 8) + "px";
   m.style.top = Math.min(e.clientY, innerHeight - m.offsetHeight - 8) + "px";
 });
-document.addEventListener("click", (e) => { if (!e.target.closest("#menu")) $("#menu").style.display = "none"; });
+document.addEventListener("click", (e) => { const m = $("#menu"); if (m && !e.target.closest("#menu")) m.style.display = "none"; });
 $("#menu").addEventListener("click", async (e) => {
   const co = e.target.dataset.menu, o = S.oferty.find((x) => x.id === menuId);
   $("#menu").style.display = "none";
@@ -374,6 +382,7 @@ function otworzUstawienia(zakladka = 0) {
   $("#d-ustawienia").showModal();
 }
 function pokazZakladke(n) {
+  if (n === 3) pokazWifi();
   $$("#d-ustawienia .zakladka").forEach((z) => z.classList.toggle("wl", +z.dataset.zakladka === n));
   $$("#d-ustawienia [data-panel]").forEach((p) => (p.hidden = +p.dataset.panel !== n));
 }
@@ -580,6 +589,70 @@ function pokazPostep() {
   if (trwa) stopka(S.postep.log || "Pobieram świeże oferty…");
 }
 
+// ---------------------------------------------------------------- telefon (Wi-Fi)
+let ekranLogowaniaWidoczny = false;
+async function zaloguj(pin) {
+  const odp = await fetch("/api/zaloguj", { method: "POST", headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ pin }) });
+  const w = await odp.json().catch(() => ({}));
+  if (!odp.ok || !w.klucz) throw new Error(w.blad || "Nie udało się zalogować.");
+  zapiszKlucz(w.klucz);
+}
+function ekranLogowania(komunikat) {
+  if (ekranLogowaniaWidoczny) return;
+  ekranLogowaniaWidoczny = true;
+  zapiszKlucz("");
+  document.body.innerHTML = `<div class="logowanie"><form class="okno" id="f-pin">
+      <div class="okno-tresc">
+        <h2>Radar Karier</h2>
+        <p class="opis-pola">${esc(komunikat || "Podaj PIN widoczny na komputerze: Ustawienia → Telefon.")}</p>
+        <input class="pole pin" id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="PIN" autofocus>
+        <p class="opis-pola blad-wifi" id="pin-blad"></p>
+      </div>
+      <div class="okno-przyciski"><span class="odstep"></span><button class="btn glowny" id="pin-ok">Zaloguj</button></div>
+    </form></div>`;
+  $("#f-pin").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    $("#pin-ok").disabled = true;
+    try {
+      await zaloguj($("#pin").value);
+      location.reload();
+    } catch (err) {
+      $("#pin-blad").textContent = err.message === "Failed to fetch" ? BRAK_POLACZENIA : err.message;
+      $("#pin").select();
+    } finally { $("#pin-ok").disabled = false; }
+  });
+}
+function rysujWifi(w) {
+  $("#wifi-wlacz").checked = w.wlaczone;
+  $("#wifi-dane").hidden = !w.wlaczone;
+  $("#wifi-adresy").innerHTML = w.adresy.length ? w.adresy.map((a) => `<div>${esc(a)}</div>`).join("")
+    : "<div>nie znam adresu komputera — sprawdź, czy jest połączony z Wi-Fi</div>";
+  $("#wifi-pin").textContent = w.pin;
+  try { $("#wifi-qr").innerHTML = w.adresy.length ? QR.svg(w.adresy[0] + "/#pin=" + w.pin) : ""; }
+  catch (err) { $("#wifi-qr").innerHTML = ""; }
+  $("#wifi-blad").hidden = !w.blad;
+  $("#wifi-blad").textContent = w.blad ? "Nie udało się włączyć: " + w.blad : "";
+}
+async function pokazWifi() {
+  $("#wifi-komputer").hidden = ZDALNY;
+  $("#wifi-telefon").hidden = !ZDALNY;
+  if (!ZDALNY) try { rysujWifi(await api("wifi_stan")); } catch (err) { stopka(err.message); }
+}
+$("#wifi-wlacz").addEventListener("change", async (e) => {
+  try { rysujWifi(await api("wifi", { wlacz: e.target.checked })); } catch (err) { stopka(err.message); }
+});
+$("#wifi-nowy-pin").addEventListener("click", async () => {
+  const ok = await pytanie("Zmienić PIN?", "Telefony, które są teraz zalogowane, będą musiały podać nowy PIN.", [["Anuluj", false], ["Zmień PIN", true, "glowny"]]);
+  if (ok) try { rysujWifi(await api("wifi", { wlacz: true, nowy_pin: true })); } catch (err) { stopka(err.message); }
+});
+$("#wifi-wyloguj").addEventListener("click", () => { zapiszKlucz(""); location.reload(); });
+if (ZDALNY) {
+  window.addEventListener("hashchange", () => { if (/pin=\d/.test(location.hash)) location.reload(); });
+  $("#nowa-osoba").hidden = true;
+  document.title = "Radar Karier · telefon";
+}
+
 // ---------------------------------------------------------------- sygnal zycia + zmiany z serwera
 let wersja = -1, pokazanyKoniec = null;
 async function przeladuj() {
@@ -589,8 +662,10 @@ async function przeladuj() {
   pokazPostep();
 }
 async function sprawdz() {
+  if (ekranLogowaniaWidoczny) return;
   try {
     const odp = await fetch("/api/wersja", { headers: { "X-Klucz": KLUCZ } });
+    if (odp.status === 403 && ZDALNY) return ekranLogowania("Komputer zmienił PIN — zaloguj się ponownie.");
     const w = await odp.json();
     S.postep = w.postep;
     pokazPostep();
@@ -605,7 +680,7 @@ async function sprawdz() {
       stopka(S.postep.koniec, true);
     }
   } catch (err) {
-    stopka("Brak połączenia z aplikacją — uruchom ją ponownie z pliku Radar Karier.pyw");
+    stopka(BRAK_POLACZENIA);
   }
 }
 setInterval(sprawdz, 1500);
@@ -623,6 +698,12 @@ document.addEventListener("keydown", (e) => {
 // ---------------------------------------------------------------- start
 (async () => {
   try {
+    const pinZQR = ZDALNY && location.hash.match(/pin=(\d+)/);
+    if (pinZQR) {                              // telefon zeskanowal kod QR z komputera
+      history.replaceState(null, "", location.pathname);
+      try { await zaloguj(pinZQR[1]); location.reload(); return; }
+      catch (err) { return ekranLogowania(err.message === "Failed to fetch" ? BRAK_POLACZENIA : err.message); }
+    }
     await pobierzStan();
     wersja = S.wersja;
     pokazanyKoniec = S.postep.koniec;
@@ -631,6 +712,7 @@ document.addEventListener("keydown", (e) => {
     pokazPostep();
     stopka(S.oferty.length ? `Ofert w bazie: ${S.oferty.length} · statusy i notatki zapisują się w pliku radar.db` : "Dodaj CV albo frazy w Ustawieniach i kliknij „Odśwież oferty”.");
   } catch (err) {
-    document.body.innerHTML = `<div class="strona"><h1>Radar Karier</h1><p>${esc(err.message)}</p></div>`;
+    if (err.message === "ZALOGUJ") return ekranLogowania();
+    document.body.innerHTML = `<div class="strona"><h1>Radar Karier</h1><p>${esc(err.message === "Failed to fetch" ? BRAK_POLACZENIA : err.message)}</p></div>`;
   }
 })();

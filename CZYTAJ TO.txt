@@ -83,6 +83,32 @@ pojawia się "✓ zapisany" z godziną. Gdyby zapis się nie udał, wyskoczy
 okienko z błędem — nic nie ginie po cichu.
 
 
+NA TELEFONIE (przez Wi-Fi)
+--------------------------
+1. Na komputerze: Ustawienia → zakładka "Telefon" → zaznacz
+   "Włącz dostęp z telefonu".
+   Przy pierwszym razie Windows zapyta o dostęp do sieci — kliknij
+   "Zezwól" (sieć prywatna / domowa).
+2. Zeskanuj aparatem telefonu kod QR z tej zakładki — aplikacja otworzy
+   się w przeglądarce telefonu i zaloguje sama.
+   (Albo wpisz na telefonie pokazany adres, np. http://192.168.1.23:8765,
+   i podaj 6-cyfrowy PIN.)
+3. Telefon zapamiętuje logowanie. Następnym razem otwórz ten sam adres —
+   najwygodniej dodaj go do ekranu głównego ("Dodaj do ekranu głównego"
+   w menu przeglądarki).
+
+Telefon i komputer korzystają z tej samej bazy: oferty, statusy,
+notatki, CV, ustawienia i filtry są wspólne — zmianę na telefonie od
+razu widać na komputerze i odwrotnie.
+Warunki: telefon w tej samej sieci Wi-Fi co komputer, a Radar Karier
+na komputerze otwarty. Poza domem (dane komórkowe) to nie działa.
+Bezpieczeństwo: bez PIN-u nikt w sieci nie zobaczy Twoich danych;
+po 5 błędnych PIN-ach telefon jest blokowany na 15 minut. "Zmień PIN"
+wylogowuje wszystkie telefony. Dostęp wyłączysz tym samym polem.
+Jeśli adres komputera się zmieni (np. po restarcie routera), zeskanuj
+kod QR ponownie.
+
+
 FILTRY
 ------
 Kliknij "pigułkę", żeby ją włączyć (niebieska), drugi raz — wyłączyć.
