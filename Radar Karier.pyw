@@ -9,6 +9,7 @@ Dziennik bledow: radar.log.
 
 import hashlib
 import json
+import math
 import logging
 import os
 import queue
@@ -212,6 +213,10 @@ class Aplikacja:
         self.menu_id = None
         self.podswietlona = None
         self.suma_kolka = 0.0
+        self.do_przewiniecia = 0      # piksele zebrane z kolka/touchpada, czekajace na klatke
+        self.timer_przewijania = None
+        self.ostatnie_przewiniecie = 0.0
+        self.naglowek_ukryty = False
         self.szerokosc = 0        # szerokosc kolumny z kartami
         self.x0 = 24              # jej lewa krawedz
         self.y_listy = 0          # gdzie zaczyna sie lista kart
@@ -339,7 +344,8 @@ class Aplikacja:
                                 yscrollincrement=1)          # przewijanie co piksel
         pas = ttk.Scrollbar(obszar, orient="vertical", command=self._przewin_pasek,
                             style="Radar.Vertical.TScrollbar")
-        self.plotno.configure(yscrollcommand=pas.set)
+        self.pas = pas
+        self.plotno.configure(yscrollcommand=self._po_przewinieciu)
         pas.pack(side="right", fill="y")
         self.plotno.pack(side="left", fill="both", expand=True)
         self.strona = tk.Frame(self.plotno, bg=KOLORY["tlo"])
@@ -670,8 +676,37 @@ class Aplikacja:
 
     # ------------------------------------------------------------------ przewijanie
     def _przewin_o(self, piksele):
-        if piksele:
-            self.plotno.yview_scroll(int(piksele), "units")
+        # touchpad i kolko wysylaja dziesiatki zdarzen na sekunde - zbieramy je
+        # i przewijamy raz na klatke, zamiast przerysowywac przy kazdym
+        if not piksele:
+            return
+        self.do_przewiniecia += int(piksele)
+        if self.timer_przewijania is None:
+            self.timer_przewijania = self.root.after(12, self._przewin_teraz)
+
+    def _przewin_teraz(self):
+        self.timer_przewijania = None
+        krok, self.do_przewiniecia = self.do_przewiniecia, 0
+        if krok:
+            self.plotno.yview_scroll(krok, "units")
+
+    def _po_przewinieciu(self, gora, dol):
+        """Wolane przy kazdej zmianie widoku (kolko, pasek, klawisze, strony)."""
+        self.pas.set(gora, dol)
+        self.ostatnie_przewiniecie = time.time()
+        # panel filtrow to kilkadziesiat okienek - gdy jest poza ekranem, chowamy go,
+        # zeby Windows nie musial ich przesuwac przy kazdym kroku przewijania
+        try:
+            wys = float(self.plotno.cget("scrollregion").split()[3])
+        except (IndexError, ValueError):
+            return
+        ukryj = float(gora) * wys > self.strona.winfo_height() + 40
+        if ukryj != self.naglowek_ukryty:
+            self.naglowek_ukryty = ukryj
+            self.plotno.itemconfigure(self.okno_strony, state="hidden" if ukryj else "normal")
+
+    def _przewija(self):
+        return time.time() - self.ostatnie_przewiniecie < 0.15
 
     def _kolko(self, e):
         # mysz: 120 na "zabek"; touchpad na Windows: wiele malych wartosci
@@ -858,10 +893,9 @@ class Aplikacja:
 
     # --- rysowanie na plotnie -------------------------------------------
     def _zaokr(self, x0, y0, x1, y1, r, **kw):
-        r = min(r, (x1 - x0) / 2, (y1 - y0) / 2)
-        p = [x0 + r, y0, x1 - r, y0, x1, y0, x1, y0 + r, x1, y1 - r, x1, y1,
-             x1 - r, y1, x0 + r, y1, x0, y1, x0, y1 - r, x0, y0 + r, x0, y0]
-        return self.plotno.create_polygon(p, smooth=True, **kw)
+        # gotowe punkty lukow zamiast smooth=True - Tk nie liczy krzywych przy
+        # kazdym przerysowaniu (to spowalnialo przewijanie)
+        return self.plotno.create_polygon(self._punkty(x0, y0, x1, y1, r), **kw)
 
     def _pigulka_na_plotnie(self, x, y, tekst, fg, bg, ramka, font, tagi, padx=10, pady=4, r=7):
         """Zaokraglona etykieta; zwraca (tlo, tekst, szerokosc, wysokosc)."""
@@ -1014,7 +1048,8 @@ class Aplikacja:
         c.tag_bind("pager", "<Button-1>", lambda _e: self._klik_pager())
         c.tag_bind("karta", "<Enter>", lambda _e: self._podswietl(True))
         c.tag_bind("karta", "<Leave>", lambda _e: self._podswietl(False))
-        c.tag_bind("reka", "<Enter>", lambda _e: c.configure(cursor="hand2"), add="+")
+        c.tag_bind("reka", "<Enter>", lambda _e: self._przewija() or c.configure(cursor="hand2"),
+                   add="+")
         c.tag_bind("reka", "<Leave>", lambda _e: c.configure(cursor=""), add="+")
         c.tag_bind("nota", "<Enter>", lambda _e: c.configure(cursor="xterm"), add="+")
         c.tag_bind("nota", "<Leave>", lambda _e: c.configure(cursor=""), add="+")
@@ -1048,6 +1083,8 @@ class Aplikacja:
 
     def _podswietl(self, wlacz):
         c = self.plotno
+        if wlacz and self._przewija():      # karta "przejechala" pod kursorem - pomijamy
+            return
         if self.podswietlona is not None:
             c.itemconfigure(self.podswietlona, outline=KOLORY["linia"])
             self.podswietlona = None
@@ -1058,10 +1095,18 @@ class Aplikacja:
                 c.itemconfigure(k["ramka"], outline=KOLORY["linia_hover"])
                 self.podswietlona = k["ramka"]
 
+    _LUK = [(math.cos(math.radians(a)), math.sin(math.radians(a))) for a in (0, 30, 60, 90)]
+
     def _punkty(self, x0, y0, x1, y1, r):
-        r = min(r, (x1 - x0) / 2, (y1 - y0) / 2)
-        return [x0 + r, y0, x1 - r, y0, x1, y0, x1, y0 + r, x1, y1 - r, x1, y1,
-                x1 - r, y1, x0 + r, y1, x0, y1, x0, y1 - r, x0, y0 + r, x0, y0]
+        """Prostokat z zaokraglonymi rogami jako lista punktow wielokata."""
+        r = max(0.0, min(r, (x1 - x0) / 2, (y1 - y0) / 2))
+        p = []
+        for cx, cy, sx, sy, odwroc in ((x1 - r, y0 + r, 1, -1, True), (x1 - r, y1 - r, 1, 1, False),
+                                       (x0 + r, y1 - r, -1, 1, True), (x0 + r, y0 + r, -1, -1, False)):
+            luk = self._LUK[::-1] if odwroc else self._LUK
+            for c, s in luk:
+                p += [cx + sx * r * c, cy + sy * r * s]
+        return p
 
     def _etykiety(self, o):
         e = []
