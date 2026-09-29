@@ -207,6 +207,13 @@ function kartaHtml(o) {
 }
 
 function rysuj(zachowajPozycje) {
+  // zapamietujemy karte na gorze ekranu (nie liczbe pikseli - wysokosc kart sie zmienia,
+  // np. na telefonie, i lista by "uciekla")
+  let kotwica = null;
+  if (zachowajPozycje) {
+    const k = $$("#lista .karta").find((el) => el.getBoundingClientRect().bottom > 0);
+    if (k) kotwica = { id: k.dataset.id, top: k.getBoundingClientRect().top };
+  }
   const y = window.scrollY;
   const ile = zachowajPozycje ? Math.max(narysowane, PORCJA) : PORCJA;
   widoczne = filtruj();
@@ -216,7 +223,11 @@ function rysuj(zachowajPozycje) {
   rysujChipy();
   licznikiRysuj();
   $("#info-listy").textContent = widoczne.length ? `Ofert: ${widoczne.length} z ${S.oferty.length}` : "";
-  if (zachowajPozycje) window.scrollTo(0, y);
+  if (zachowajPozycje) {
+    const k = kotwica && $(`.karta[data-id="${CSS.escape(kotwica.id)}"]`);
+    if (k) window.scrollBy(0, k.getBoundingClientRect().top - kotwica.top);
+    else window.scrollTo(0, y);
+  }
 }
 function dorysuj(ile = PORCJA) {
   const do_ = Math.min(widoczne.length, narysowane + ile);
@@ -255,6 +266,9 @@ $("#lista").addEventListener("click", async (e) => {
     if (rozwiniete.has(id)) rozwiniete.delete(id);
     else { rozwiniete.add(id); if (!S.szczegoly[id] && !S.pobierane.includes(id)) await pobierzOpis(id); }
     odswiezKarte(id);
+    // po zwinieciu dlugiej karty jej poczatek moze byc nad ekranem - wracamy do niej
+    const nowa = $(`.karta[data-id="${CSS.escape(id)}"]`);
+    if (nowa && nowa.getBoundingClientRect().top < 0) window.scrollBy(0, nowa.getBoundingClientRect().top - 10);
   } else if (akcja === "ponow") {
     await pobierzOpis(id);
     odswiezKarte(id);
@@ -661,6 +675,7 @@ async function przeladuj() {
   wersja = S.wersja;
   rysuj(true);
   pokazPostep();
+  if ($("#stopka").textContent.startsWith("Pobieram opis") && !S.pobierane.length) stopka("✓ Opis oferty pobrany", true);
 }
 async function sprawdz() {
   if (ekranLogowaniaWidoczny) return;

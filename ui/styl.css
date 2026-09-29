@@ -206,7 +206,8 @@ textarea.pole { resize: vertical; min-height: 120px; }
   .licznik { min-width: calc(50% - 4px); flex: 1; }
   .wiersz { flex-direction: column; align-items: flex-start; gap: 6px; }
   .wiersz > .etyk { width: auto; }
-  .karta { padding: 12px; }
+  .karta { padding: 12px; contain-intrinsic-size: auto 480px; }
+  .szczegoly { padding: 10px 11px; overflow-wrap: anywhere; }
   .karta .dol { flex-direction: column; align-items: stretch; }
   .karta .otworz { margin-left: 0; }
   .notatka { width: 100%; }
