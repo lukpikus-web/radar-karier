@@ -685,6 +685,8 @@ async function sprawdz() {
   }
 }
 setInterval(sprawdz, 1500);
+// zamkniecie okna na komputerze konczy aplikacje (telefon jej nie zamyka)
+if (!ZDALNY) window.addEventListener("pagehide", () => navigator.sendBeacon("/api/zamykam", KLUCZ));
 
 // ---------------------------------------------------------------- przyciski i klawisze
 $("#b-odswiez").addEventListener("click", odswiez);

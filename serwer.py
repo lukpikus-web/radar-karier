@@ -57,7 +57,9 @@ import baza          # noqa: E402
 import dopasowanie   # noqa: E402
 import radar         # noqa: E402
 
-BEZ_SYGNALU_S = 25        # okno nie odzywa sie tyle sekund -> zamykamy aplikacje
+BEZ_SYGNALU_S = 180       # nikt sie nie odzywa tyle sekund -> zamykamy aplikacje
+                          # (zminimalizowane okno Edge odzywa sie nawet raz na minute)
+PO_ZAMKNIECIU_S = 8       # okno zglosilo zamkniecie -> konczymy, jesli nic nie wroci
 PORT_WIFI = 8765          # adres dla telefonu: http://<adres-komputera>:8765
 PROBY_PIN = 5             # tyle blednych PIN-ow z jednego telefonu...
 BLOKADA_PIN_S = 15 * 60   # ...i blokada na 15 minut
@@ -97,6 +99,7 @@ class Aplikacja:
         self.bledy_szczeg = {}
         threading.Thread(target=self._pracownik_szczegolow, daemon=True).start()
         self.ostatni_sygnal = time.time()
+        self.okno_zamkniete = 0.0
         self.serwer_wifi = None
         self.blad_wifi = ""
         self.nieudane_piny = {}
@@ -580,6 +583,12 @@ class Obsluga(BaseHTTPRequestHandler):
 
     def do_POST(self):
         polecenie = self.path.split("?", 1)[0].rsplit("/", 1)[-1]
+        if polecenie == "zamykam" and not self._zdalny():  # okno na komputerze sie zamyka
+            dlugosc = min(int(self.headers.get("Content-Length") or 0), 1000)
+            podany = self.rfile.read(dlugosc).decode("utf-8", "replace").strip()
+            if secrets.compare_digest(podany, self.klucz):
+                self.app.okno_zamkniete = time.time()
+            return self._wyslij(200, {})
         if polecenie == "zaloguj" and self._zdalny():     # telefon podaje PIN
             try:
                 dlugosc = min(int(self.headers.get("Content-Length") or 0), 1000)
@@ -658,6 +667,10 @@ def otworz_okno(adres):
             flagi = 0x08000000 if sys.platform.startswith("win") else 0   # bez czarnej konsoli
             subprocess.Popen([przegladarka, "--app=" + adres, "--user-data-dir=" + PROFIL_OKNA,
                               "--no-first-run", "--no-default-browser-check",
+                              # zminimalizowane / zasloniete okno ma dalej dawac znak zycia
+                              "--disable-background-timer-throttling",
+                              "--disable-backgrounding-occluded-windows",
+                              "--disable-renderer-backgrounding",
                               "--window-size=1240,900"], creationflags=flagi)
             LOG.info("Okno: %s", os.path.basename(przegladarka))
             return
@@ -708,7 +721,12 @@ def main():
         # okno wysyla sygnal co kilka sekund; gdy zamkniesz okno, konczymy aplikacje
         while True:
             time.sleep(5)
-            if time.time() - app.ostatni_sygnal > BEZ_SYGNALU_S and not (app.watek and app.watek.is_alive()):
+            teraz = time.time()
+            if app.watek and app.watek.is_alive():
+                continue                           # pobieranie ofert trwa - czekamy
+            zamkniete = (app.okno_zamkniete and app.ostatni_sygnal <= app.okno_zamkniete
+                         and teraz - app.okno_zamkniete > PO_ZAMKNIECIU_S)
+            if zamkniete or teraz - app.ostatni_sygnal > BEZ_SYGNALU_S:
                 LOG.info("Okno zamkniete - koncze")
                 app.zatrzymaj_wifi()
                 serwer.shutdown()
