@@ -631,6 +631,7 @@ function rysujWifi(w) {
   $("#wifi-pin").textContent = w.pin;
   try { $("#wifi-qr").innerHTML = w.adresy.length ? QR.svg(w.adresy[0] + "/#pin=" + w.pin) : ""; }
   catch (err) { $("#wifi-qr").innerHTML = ""; }
+  $("#wifi-publiczna").hidden = !w.publiczna;
   $("#wifi-blad").hidden = !w.blad;
   $("#wifi-blad").textContent = w.blad ? "Nie udało się włączyć: " + w.blad : "";
 }

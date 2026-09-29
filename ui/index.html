@@ -106,8 +106,17 @@
       <section data-panel="3" hidden>
         <div id="wifi-komputer">
           <h3>Radar Karier na telefonie (przez Wi-Fi)</h3>
-          <p class="opis-pola">Telefon musi być w tej samej sieci Wi-Fi co komputer, a Radar Karier na komputerze musi być otwarty. Przy pierwszym włączeniu Windows może zapytać o dostęp do sieci — wybierz „Zezwól” (sieć prywatna).</p>
+          <p class="opis-pola">Telefon musi być w tej samej sieci co komputer (to samo Wi-Fi albo laptop na hotspocie z tego telefonu), a Radar Karier na komputerze musi być otwarty. Przy pierwszym włączeniu Windows może zapytać o dostęp do sieci — wybierz „Zezwól” (sieć prywatna).</p>
           <label class="wybor"><input type="checkbox" id="wifi-wlacz"> Włącz dostęp z telefonu</label>
+          <div class="ostrzezenie-wifi" id="wifi-publiczna" hidden>
+            <b>Windows traktuje tę sieć jako publiczną — zapora może blokować telefon</b> (strona „niedostępna”).
+            Tak jest zwykle, gdy laptop łączy się przez hotspot z telefonu albo z nową siecią. Jak to zmienić:
+            <ol>
+              <li>Na komputerze: Ustawienia Windows → Sieć i Internet → Wi-Fi → kliknij nazwę sieci → „Typ profilu sieci”: <b>Prywatna</b>.</li>
+              <li>Albo: menu Start → wpisz „Zezwalaj aplikacji przez Zaporę systemu Windows” → „Zmień ustawienia” → przy <b>Python</b> / <b>pythonw</b> zaznacz też <b>Publiczna</b> → OK.</li>
+            </ol>
+            Potem odśwież stronę na telefonie.
+          </div>
           <div id="wifi-dane" hidden>
             <p class="opis-pola">Zeskanuj kod aparatem telefonu — aplikacja otworzy się i zaloguje sama:</p>
             <div id="wifi-qr" class="wifi-qr"></div>
@@ -115,6 +124,7 @@
             <div id="wifi-adresy" class="wifi-adres"></div>
             <p class="opis-pola">2. Podaj PIN:</p>
             <div id="wifi-pin" class="wifi-pin"></div>
+            <p class="opis-pola">Kod nie działa? Upewnij się, że telefon jest w tej samej sieci co komputer (hotspot z tego telefonu też się liczy). Jeśli wyżej jest kilka adresów, wpisz na telefonie kolejny.</p>
             <p class="opis-pola">Telefon zapamięta logowanie — następnym razem wystarczy otworzyć ten sam adres (dodaj go do ekranu głównego). Oferty, statusy, notatki, CV i filtry są wspólne z komputerem. Zmiana PIN-u wyloguje wszystkie telefony.</p>
             <button type="button" class="btn maly" id="wifi-nowy-pin">Zmień PIN</button>
           </div>

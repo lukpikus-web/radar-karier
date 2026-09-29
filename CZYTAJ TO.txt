@@ -100,8 +100,19 @@ NA TELEFONIE (przez Wi-Fi)
 Telefon i komputer korzystają z tej samej bazy: oferty, statusy,
 notatki, CV, ustawienia i filtry są wspólne — zmianę na telefonie od
 razu widać na komputerze i odwrotnie.
-Warunki: telefon w tej samej sieci Wi-Fi co komputer, a Radar Karier
-na komputerze otwarty. Poza domem (dane komórkowe) to nie działa.
+Warunki: telefon w tej samej sieci co komputer, a Radar Karier
+na komputerze otwarty. Działa też, gdy laptop korzysta z hotspotu
+z telefonu (telefon na danych komórkowych udostępnia internet laptopowi).
+Nie działa, gdy telefon i komputer są w różnych sieciach (np. telefon
+na danych komórkowych, a komputer na domowym Wi-Fi).
+
+Strona "niedostępna" po zeskanowaniu kodu? Najczęściej blokuje to zapora
+Windows, bo sieć (np. hotspot z telefonu) jest ustawiona jako PUBLICZNA.
+Aplikacja pokaże wtedy ostrzeżenie w zakładce "Telefon". Rozwiązanie:
+Ustawienia Windows → Sieć i Internet → Wi-Fi → nazwa sieci →
+"Typ profilu sieci": Prywatna. Albo: Start → "Zezwalaj aplikacji przez
+Zaporę systemu Windows" → "Zmień ustawienia" → przy Python / pythonw
+zaznacz też "Publiczna".
 Bezpieczeństwo: bez PIN-u nikt w sieci nie zobaczy Twoich danych;
 po 5 błędnych PIN-ach telefon jest blokowany na 15 minut. "Zmień PIN"
 wylogowuje wszystkie telefony. Dostęp wyłączysz tym samym polem.

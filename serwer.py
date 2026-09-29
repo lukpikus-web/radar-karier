@@ -322,7 +322,7 @@ class Aplikacja:
         return {"wlaczone": wl, "pin": baza.meta_get(self.conn, "wifi_pin") if wl else "",
                 "adresy": ["http://%s:%d" % (ip, self.serwer_wifi.server_address[1])
                            for ip in adresy_komputera()] if wl else [],
-                "blad": self.blad_wifi}
+                "blad": self.blad_wifi, "publiczna": wl and siec_publiczna()}
 
     def wifi(self, wlacz, nowy_pin=False):
         with self.blokada:
@@ -483,6 +483,20 @@ def adresy_komputera():
                 (ip.startswith(("192.168.", "10.")) or
                  (ip.startswith("172.") and 16 <= int(ip.split(".")[1]) <= 31))]
     return prywatne or [ip for ip in adresy if not ip.startswith("127.")]
+
+
+def siec_publiczna():
+    """Czy Windows uznal obecna siec za publiczna? Wtedy zapora zwykle blokuje telefon
+    (np. gdy laptop korzysta z hotspotu telefonu - nowa siec jest domyslnie publiczna)."""
+    if os.name != "nt":
+        return False
+    try:
+        wynik = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                                "(Get-NetConnectionProfile).NetworkCategory"],
+                               capture_output=True, text=True, timeout=10, creationflags=0x08000000)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return "Public" in wynik.stdout
 
 
 def otworz_link(url):
