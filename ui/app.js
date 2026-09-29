@@ -206,7 +206,7 @@ function kartaHtml(o) {
     </div></article>`;
 }
 
-function rysuj(zachowajPozycje) {
+function rysuj(zachowajPozycje, stalaKolejnosc) {
   // zapamietujemy karte na gorze ekranu (nie liczbe pikseli - wysokosc kart sie zmienia,
   // np. na telefonie, i lista by "uciekla")
   let kotwica = null;
@@ -216,7 +216,32 @@ function rysuj(zachowajPozycje) {
   }
   const y = window.scrollY;
   const ile = zachowajPozycje ? Math.max(narysowane, PORCJA) : PORCJA;
+  const poprzednie = widoczne;
   widoczne = filtruj();
+  if (stalaKolejnosc) {
+    // zmiana przyszla w tle (np. pobrany opis przeliczyl dopasowanie) - karty zostaja tam,
+    // gdzie byly, a rozwinieta oferta nie znika, nawet jesli wypadlaby z filtra
+    const bylo = new Map(poprzednie.map((o, i) => [o.id, i]));
+    const jest = new Set(widoczne.map((o) => o.id));
+    for (const o of poprzednie) {
+      const teraz = rozwiniete.has(o.id) && !jest.has(o.id) && S.oferty.find((x) => x.id === o.id);
+      if (teraz) widoczne.push(teraz);
+    }
+    const poz = (o) => (bylo.has(o.id) ? bylo.get(o.id) : Infinity);
+    widoczne.sort((a, b) => poz(a) - poz(b));
+    // te same karty w tej samej kolejnosci -> podmieniamy tylko te, ktore sie zmienily
+    // (bez rysowania calej listy od nowa, wiec nic nie skacze)
+    const naEkranie = $$("#lista .karta").map((el) => el.dataset.id);
+    const ile = Math.min(widoczne.length, Math.max(naEkranie.length, PORCJA));
+    if (naEkranie.length === ile && widoczne.slice(0, ile).every((o, i) => o.id === naEkranie[i])) {
+      for (const o of widoczne.slice(0, ile)) if (htmlKarty.get(o.id) !== kartaHtml(o)) odswiezKarte(o.id);
+      narysowane = ile;
+      rysujChipy();
+      licznikiRysuj();
+      $("#info-listy").textContent = widoczne.length ? `Ofert: ${widoczne.length} z ${S.oferty.length}` : "";
+      return;
+    }
+  }
   narysowane = 0;
   $("#lista").innerHTML = widoczne.length ? "" : `<div class="pusto">Brak ofert dla wybranych filtrów.</div>`;
   dorysuj(ile);
@@ -232,16 +257,31 @@ function rysuj(zachowajPozycje) {
 function dorysuj(ile = PORCJA) {
   const do_ = Math.min(widoczne.length, narysowane + ile);
   if (do_ <= narysowane) return;
-  $("#lista").insertAdjacentHTML("beforeend", widoczne.slice(narysowane, do_).map(kartaHtml).join(""));
+  $("#lista").insertAdjacentHTML("beforeend", widoczne.slice(narysowane, do_).map(kartaHtmlZapamietaj).join(""));
   narysowane = do_;
 }
 // kolejne karty, gdy zblizasz sie do konca listy
 new IntersectionObserver((e) => { if (e[0].isIntersecting && S) dorysuj(); }, { rootMargin: "1500px" }).observe($("#wiecej"));
 
+const htmlKarty = new Map();            // co jest narysowane w kazdej karcie
+function kartaHtmlZapamietaj(o) {
+  const h = kartaHtml(o);
+  htmlKarty.set(o.id, h);
+  return h;
+}
 function odswiezKarte(id) {
   const el = $(`.karta[data-id="${CSS.escape(id)}"]`);
   const o = S.oferty.find((x) => x.id === id);
-  if (el && o) el.outerHTML = kartaHtml(o);
+  if (!el || !o) return;
+  // notatka, ktora wlasnie piszesz, zostaje nietknieta
+  const pisana = document.activeElement && el.contains(document.activeElement) ? document.activeElement : null;
+  if (pisana && pisana.classList.contains("notatka")) { htmlKarty.set(id, kartaHtml(o)); return; }
+  // karta poza ekranem nie jest rysowana (content-visibility) - podpowiadamy jej dawna
+  // wysokosc, zeby lista nad Toba nie zmienila dlugosci i widok nie skoczyl
+  const wys = el.getBoundingClientRect().height;
+  el.outerHTML = kartaHtmlZapamietaj(o);
+  const nowa = $(`.karta[data-id="${CSS.escape(id)}"]`);
+  if (nowa && wys) nowa.style.containIntrinsicSize = `auto ${Math.round(wys)}px`;
 }
 
 // ---------------------------------------------------------------- akcje na kartach
@@ -671,9 +711,11 @@ if (ZDALNY) {
 // ---------------------------------------------------------------- sygnal zycia + zmiany z serwera
 let wersja = -1, pokazanyKoniec = null;
 async function przeladuj() {
+  const stare = S ? S.oferty.map((o) => o.id).sort().join("|") : "";
   await pobierzStan();
   wersja = S.wersja;
-  rysuj(true);
+  // te same oferty co przedtem -> nie przestawiamy listy; doszly nowe -> uklad od nowa
+  rysuj(true, stare === S.oferty.map((o) => o.id).sort().join("|"));
   pokazPostep();
   if ($("#stopka").textContent.startsWith("Pobieram opis") && !S.pobierane.length) stopka("✓ Opis oferty pobrany", true);
 }
