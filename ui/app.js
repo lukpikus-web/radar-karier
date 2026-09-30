@@ -23,6 +23,9 @@ const OPISY_ZRODEL = {
   "OLX": "OLX Praca (ogłoszenia o pracę)",
   "Useme": "Useme (zlecenia freelance)", "WorkConnect": "WorkConnect (zlecenia: stałe kategorie marketing i sprzedaż)",
   "Wellfound": "Wellfound (startupy: stałe kategorie marketing i sprzedaż w Polsce)",
+  "LegalHunts": "LegalHunts (prawo: kancelarie, in-house, doradztwo podatkowe, notariat)",
+  "PraktykiPrawnicze.pl": "PraktykiPrawnicze.pl (prawo: praktyki i praca dla studentów i młodych prawników)",
+  "Mecenasi.pl": "rekrutacje.mecenasi.pl (prawo: oferty z kancelarii)",
 };
 
 let S = null;                          // stan z serwera
@@ -521,7 +524,7 @@ $("#u-zapisz").addEventListener("click", async () => {
     poziomy: $$("#u-poziomy input:checked").map((c) => c.value), wersja: 3, cv_klucz: S.ustawienia.cv_klucz || "",
   };
   if (!Object.values(u.zrodla).some(Boolean)) { pokazZakladke(2); return alert("Zaznacz przynajmniej jeden serwis do przeszukiwania."); }
-  if (!u.frazy.length && !u.zrodla.WorkConnect && !u.zrodla.Wellfound && !confirm("Lista fraz jest pusta — aplikacja nie znajdzie żadnych ofert. Zapisać mimo to?")) return;
+  if (!u.frazy.length && !zrodloBezFraz(u.zrodla) && !confirm("Lista fraz jest pusta — aplikacja nie znajdzie żadnych ofert. Zapisać mimo to?")) return;
   if (!u.poziomy.length && !confirm("Nie zaznaczono żadnego poziomu stanowiska — oferty z podanym poziomem będą pomijane. Zapisać mimo to?")) return;
   try {
     const w = await api("ustawienia", { ustawienia: u });
@@ -612,9 +615,11 @@ function brakFiltrow() {
   const u = S.ustawienia;
   return !u.stop_tytul.length && !u.stop_jezyk.length && !u.miasto && S.poziomy.every(([k]) => u.poziomy.includes(k));
 }
+// wlaczony serwis, ktory pobiera oferty bez fraz (stale kategorie / caly portal)?
+const zrodloBezFraz = (zrodla) => S.zrodla.some((z) => !S.zrodla_fraz.includes(z) && zrodla[z]);
 async function odswiez() {
   if (S.postep.trwa) return;
-  if (!S.ustawienia.frazy.length && !S.cv && !S.ustawienia.zrodla.WorkConnect && !S.ustawienia.zrodla.Wellfound) {
+  if (!S.ustawienia.frazy.length && !S.cv && !zrodloBezFraz(S.ustawienia.zrodla)) {
     const w = await pytanie("Czego szukać?", "Nie ma jeszcze żadnych stanowisk ani słów kluczowych.<p>Dodaj CV — frazy wezmę z niego — albo wpisz je w oknie „Ustawienia”.</p>", [["Dodaj CV", "cv", true], ["Otwórz Ustawienia", "u"], ["Anuluj", null]]);
     if (w === "cv") otworzCV(); else if (w === "u") otworzUstawienia(0);
     return;

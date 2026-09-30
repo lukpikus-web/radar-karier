@@ -13,6 +13,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import html as html_modul
 from html.parser import HTMLParser
 
 # ---------------------------------------------------------------------------
@@ -67,6 +68,10 @@ WLACZONE_ZRODLA = {
     "Useme": True,
     "WorkConnect": False,    # stale kategorie marketingowe - wlacza sie w Ustawieniach
     "Wellfound": True,       # stale kategorie startupowe (marketing, sprzedaz)
+    # portale prawnicze - wlacza sie w Ustawieniach (dla osob szukajacych pracy w prawie)
+    "LegalHunts": False,
+    "PraktykiPrawnicze.pl": False,
+    "Mecenasi.pl": False,
 }
 
 # pracuj.pl pokazuje 50 ofert na strone - ile stron brac na jedna fraze
@@ -88,9 +93,10 @@ POZIOMY = [
 ]
 
 ZRODLA = ["pracuj.pl", "LinkedIn", "RocketJobs", "Just Join IT", "OLX", "Useme",
-          "WorkConnect", "Wellfound"]
+          "WorkConnect", "Wellfound", "LegalHunts", "PraktykiPrawnicze.pl", "Mecenasi.pl"]
 ZRODLA_FRAZ = ["pracuj.pl", "LinkedIn", "RocketJobs", "Just Join IT", "OLX", "Useme"]
-ZRODLA_STALE = ["WorkConnect", "Wellfound"]      # stale kategorie, bez fraz
+ZRODLA_STALE = ["WorkConnect", "Wellfound",      # stale kategorie / cale portale, bez fraz
+                "LegalHunts", "PraktykiPrawnicze.pl", "Mecenasi.pl"]
 
 PRZERWA = 0.8            # sekundy miedzy zapytaniami
 
@@ -110,14 +116,14 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 # Pobieranie stron
 # ---------------------------------------------------------------------------
 
-def pobierz(url, proby=3, accept=None):
+def pobierz(url, proby=3, accept=None, naglowki=None):
     """Zwraca tresc strony. Przy bledzie 429/503 odczekuje i probuje ponownie."""
-    req = urllib.request.Request(url, headers={
+    req = urllib.request.Request(url, headers=dict({
         "User-Agent": UA,
         "Accept": accept or "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "pl-PL,pl;q=0.9,en;q=0.8",
         "Connection": "close",
-    })
+    }, **(naglowki or {})))
     ctx = ssl.create_default_context()
     czekaj = 8
     for proba in range(proby):
@@ -633,6 +639,190 @@ def zrodlo_wellfound(sciezka, kategoria):
                 "opis": opis[:600],
                 "termin": "",
             })
+    return wynik
+
+
+# ---------------------------------------------------------------------------
+# Portale prawnicze (male - pobieramy wszystkie aktualne oferty, bez fraz)
+# ---------------------------------------------------------------------------
+
+# LegalHunts: strona pobiera oferty z publicznej bazy Supabase. Adres bazy
+# i publiczny klucz odczytujemy z kodu strony (tak jak robi to przegladarka).
+LEGALHUNTS = "https://legalhunts.com"
+_legalhunts_dostep = None
+LEGALHUNTS_POZIOMY = {"intern": "Praktykant", "junior": "Junior", "mid": "Mid", "senior": "Senior",
+                      "manager": "Manager", "senior-manager": "Senior Manager",
+                      "head-of-legal": "Head of Legal", "counsel": "Counsel", "partner": "Partner"}
+LEGALHUNTS_UMOWY = {"full-time": "Pełny etat", "part-time": "Część etatu",
+                    "contract": "Kontrakt / B2B", "internship": "Staż / praktyka"}
+
+
+def _legalhunts_dostep_ze_strony():
+    strona = pobierz(LEGALHUNTS + "/")
+    skrypt = re.search(r'src="(/assets/index-[^"]+\.js)"', strona)
+    if not skrypt:
+        raise ValueError("nie znalazłem kodu strony (zmieniła się budowa strony)")
+    kod = pobierz(LEGALHUNTS + skrypt.group(1))
+    adres = re.search(r'https://[a-z0-9]+\.supabase\.co', kod)
+    klucz = re.search(r'eyJ[\w-]+\.eyJ[\w-]+\.[\w-]+', kod)
+    if not adres or not klucz:
+        raise ValueError("nie znalazłem adresu danych w kodzie strony")
+    return adres.group(0), klucz.group(0)
+
+
+def _legalhunts_zapytanie(sciezka):
+    """Zapytanie do bazy LegalHunts; przy odmowie klucza raz odczytujemy go na nowo."""
+    global _legalhunts_dostep
+    for proba in range(2):
+        if _legalhunts_dostep is None:
+            _legalhunts_dostep = _legalhunts_dostep_ze_strony()
+        adres, klucz = _legalhunts_dostep
+        try:
+            return json.loads(pobierz(adres + "/rest/v1/" + sciezka, accept="application/json",
+                                      naglowki={"apikey": klucz, "Authorization": "Bearer " + klucz}))
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403) and proba == 0:
+                _legalhunts_dostep = None          # klucz sie zmienil - pobierzemy nowy
+                continue
+            raise
+
+
+def zrodlo_legalhunts():
+    teraz = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    pola = ("id,title,locations,salary_min,salary_max,salary_currency,employment_type,"
+            "experience_level,job_type,work_mode,posted_at,description,company:companies(name)")
+    dane = _legalhunts_zapytanie(
+        "jobs?select=%s&is_active=eq.true&or=(expires_at.gte.%s,expires_at.is.null)"
+        "&order=posted_at.desc&limit=300" % (pola, teraz))
+    wynik = []
+    for d in dane if isinstance(dane, list) else []:
+        if not isinstance(d, dict) or not d.get("id") or not d.get("title"):
+            continue
+        miasta = [(m.get("city") or "").strip() for m in d.get("locations") or [] if isinstance(m, dict)]
+        miasta = list(dict.fromkeys(m for m in miasta if m))
+        tryb = (d.get("work_mode") or "").strip()
+        kwota = ""
+        if d.get("salary_min"):
+            kwota = _liczba(d["salary_min"])
+            if d.get("salary_max") and d["salary_max"] != d["salary_min"]:
+                kwota += "–" + _liczba(d["salary_max"])
+            kwota += " " + (d.get("salary_currency") or "PLN")
+        umowy = d.get("employment_type") or []
+        umowy = umowy if isinstance(umowy, list) else [umowy]
+        poziomy = [p.strip() for p in (d.get("experience_level") or "").split(",") if p.strip()]
+        firma = d.get("company") if isinstance(d.get("company"), dict) else {}
+        wynik.append({
+            "id": "legalhunts:" + str(d["id"]),
+            "zrodlo": "LegalHunts",
+            "tytul": d["title"].strip(),
+            "firma": (firma.get("name") or "").strip(),
+            "lokalizacja": ", ".join(miasta[:3]),
+            "warszawa": any(w_okolicy(m) for m in miasta),
+            "url": "%s/job/%s" % (LEGALHUNTS, d["id"]),
+            "opublikowano": (d.get("posted_at") or "")[:10],
+            "wynagrodzenie": kwota,
+            "kategoria": "Prawo",
+            "zdalna": tryb == "zdalna",
+            "tryb": tryb.capitalize(),
+            "umowa": ", ".join(LEGALHUNTS_UMOWY.get(u, u) for u in umowy if u),
+            "poziom": ", ".join(LEGALHUNTS_POZIOMY.get(p, p) for p in poziomy),
+            "opis": _bez_html(d.get("description"))[:600],
+            "termin": "",
+        })
+    return wynik
+
+
+# PraktykiPrawnicze.pl: WordPress z publicznym API ofert (tylko aktualne oferty)
+PRAKTYKI_API = "https://praktykiprawnicze.pl/wp-json/wp/v2/job-listings"
+PRAKTYKI_TYPY = {"praktyka-platna": "Praktyka płatna", "praktyka-bezplatna": "Praktyka bezpłatna",
+                 "praca": "Praca", "program-ambasadorski": "Program ambasadorski"}
+
+
+def zrodlo_praktykiprawnicze():
+    dane = json.loads(pobierz(PRAKTYKI_API + "?per_page=100&_fields=id,date,link,title,content,meta,class_list",
+                              accept="application/json"))
+    wynik = []
+    for d in dane if isinstance(dane, list) else []:
+        meta = d.get("meta") if isinstance(d, dict) and isinstance(d.get("meta"), dict) else {}
+        tytul = html_modul.unescape((d.get("title") or {}).get("rendered") or "").strip()
+        if not tytul or not d.get("link") or meta.get("_filled"):
+            continue
+        typy = [c[len("job-type-"):] for c in d.get("class_list") or [] if c.startswith("job-type-")]
+        typy = [PRAKTYKI_TYPY.get(t, t.replace("-", " ").capitalize()) for t in typy]
+        miejsce = html_modul.unescape(meta.get("_job_location") or "").strip()
+        zdalna = bool(meta.get("_remote_position"))
+        wynik.append({
+            "id": "praktykiprawnicze:" + str(d.get("id")),
+            "zrodlo": "PraktykiPrawnicze.pl",
+            "tytul": tytul,
+            "firma": html_modul.unescape(meta.get("_company_name") or "").strip(),
+            "lokalizacja": miejsce or ("zdalnie" if zdalna else ""),
+            "warszawa": bool(miejsce) and w_okolicy(miejsce),
+            "url": d["link"],
+            "opublikowano": (d.get("date") or "")[:10],
+            "wynagrodzenie": html_modul.unescape(meta.get("_job_salary") or "").strip(),
+            "kategoria": "Prawo",
+            "zdalna": zdalna,
+            "tryb": "Zdalna" if zdalna else "",
+            "umowa": ", ".join(typy),
+            # praktyki trafiaja do poziomu "Praktykant / stazysta" w filtrach
+            "poziom": "Praktykant" if any("Praktyka" in t for t in typy) else "",
+            "opis": html_modul.unescape(_bez_html((d.get("content") or {}).get("rendered")))[:600],
+            "termin": "",
+        })
+    return wynik
+
+
+# rekrutacje.mecenasi.pl: prosta strona - lista ofert i osobna strona kazdej oferty
+MECENASI = "https://rekrutacje.mecenasi.pl/"
+
+
+def _mecenasi_pole(linie, etykieta):
+    for i, l in enumerate(linie[:-1]):
+        if l.rstrip(":").strip().lower() == etykieta.lower():
+            return linie[i + 1]
+    return ""
+
+
+def zrodlo_mecenasi():
+    lista = pobierz(MECENASI)
+    linki = list(dict.fromkeys(re.findall(r'href="(oferta-[a-z0-9-]+\.html)"', lista)))
+    wynik = []
+    for nr, link in enumerate(linki):
+        if nr:
+            time.sleep(PRZERWA)
+        url = MECENASI + link
+        linie = [l["tekst"] for l in html_na_linie(pobierz(url))]
+        numer = next((l for l in linie if l.lower().startswith("numer oferty")), "")
+        rok = re.search(r"/(\d{2})\b", numer)
+        # na liscie wisza tez stare ogloszenia (np. z 2023) - bierzemy biezacy i poprzedni rok
+        if rok and 2000 + int(rok.group(1)) < time.localtime().tm_year - 1:
+            continue
+        tytul = _mecenasi_pole(linie, "Stanowisko")
+        if not tytul:
+            continue
+        miejsce = _mecenasi_pole(linie, "Lokalizacja")
+        umowa = _mecenasi_pole(linie, "Forma zatrudnienia")
+        cala_polska = "caly kraj" in uprosc(miejsce) or "cala polska" in uprosc(miejsce)
+        start = linie.index(numer) + 1 if numer in linie else 0
+        wynik.append({
+            "id": "mecenasi:" + link[len("oferta-"):-len(".html")],
+            "zrodlo": "Mecenasi.pl",
+            "tytul": tytul[:1] + tytul[1:].lower() if tytul.isupper() else tytul,
+            "firma": _mecenasi_pole(linie, "Dane pracodawcy"),
+            "lokalizacja": miejsce,
+            "warszawa": cala_polska or w_okolicy(miejsce),
+            "url": url,
+            "opublikowano": "",
+            "wynagrodzenie": "",
+            "kategoria": "Prawo",
+            "zdalna": "zdaln" in uprosc(miejsce + " " + umowa),
+            "tryb": "",
+            "umowa": umowa,
+            "poziom": "",
+            "opis": " ".join(linie[start:start + 6])[:600],
+            "termin": "",
+        })
     return wynik
 
 
@@ -1187,9 +1377,19 @@ def pobierz_szczegoly(oferta):
     zrodlo = oferta.get("zrodlo") or ""
     ident = (oferta.get("id") or "").split(":", 1)[-1]
     html = None
-    # OLX, RocketJobs i Just Join IT: pelny opis jest w API strony (to samo, co widzi przegladarka)
+    # OLX, RocketJobs, Just Join IT, LegalHunts i PraktykiPrawnicze: pelny opis jest w API
+    # strony (to samo, co widzi przegladarka)
     try:
-        if zrodlo == "OLX" and ident.isdigit():
+        if zrodlo == "LegalHunts" and ident:
+            d = _legalhunts_zapytanie("jobs?select=description&id=eq." + urllib.parse.quote(ident))
+            if isinstance(d, list) and d and d[0].get("description"):
+                html = "<div>%s</div>" % d[0]["description"]
+        elif zrodlo == "PraktykiPrawnicze.pl" and ident.isdigit():
+            d = json.loads(pobierz(PRAKTYKI_API + "/" + ident + "?_fields=content", accept="application/json"))
+            tresc = ((d.get("content") or {}) if isinstance(d, dict) else {}).get("rendered") or ""
+            if tresc:
+                html = "<div>%s</div>" % tresc
+        elif zrodlo == "OLX" and ident.isdigit():
             d = json.loads(pobierz(OLX_API + ident + "/", accept="application/json"))
             opis = ((d.get("data") or {}) if isinstance(d, dict) else {}).get("description") or ""
             if opis:
@@ -1304,6 +1504,11 @@ def zbierz_wszystko(log=print, przerwij=None, pomin=None):
         for sciezka, kat in WELLFOUND_STRONY:
             zadania.append(("Wellfound", sciezka,
                             lambda s=sciezka, k=kat: zrodlo_wellfound(s, k), PRZERWA * 2))
+    for zrodlo, funkcja in (("LegalHunts", zrodlo_legalhunts),
+                            ("PraktykiPrawnicze.pl", zrodlo_praktykiprawnicze),
+                            ("Mecenasi.pl", zrodlo_mecenasi)):
+        if wlaczone(zrodlo):
+            zadania.append((zrodlo, "wszystkie oferty", funkcja, PRZERWA))
 
     pytane = set()
     for nr, (zrodlo, opis, funkcja, przerwa) in enumerate(zadania, 1):

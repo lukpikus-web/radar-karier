@@ -75,12 +75,16 @@ Szukane po Twoich frazach:
   pracuj.pl, LinkedIn, RocketJobs, Just Join IT, OLX Praca, Useme
 Stałe kategorie marketingu i sprzedaży (bez fraz):
   Wellfound (startupy), WorkConnect (zlecenia; domyślnie wyłączony)
+Portale prawnicze — wszystkie aktualne oferty, bez fraz (domyślnie
+wyłączone; włącz je, jeśli szukasz pracy w prawie):
+  LegalHunts, PraktykiPrawnicze.pl, rekrutacje.mecenasi.pl
 Które serwisy przeszukiwać — Ustawienia → "Lokalizacja i źródła"
 oraz tabela fraz w pierwszej zakładce.
 
 LinkedIn jest pytany rzadko (najwyżej raz na 2 godziny), żeby nie
 blokował dostępu. Gdy odmówi, aplikacja robi 6 godzin przerwy.
 No Fluff Jobs i startup.jobs nie są pobierane — blokują automaty.
+Jobforlawyer.pl nie jest pobierany — nie ma nowych ogłoszeń od 2022 r.
 
 
 7. TWOJE DANE
