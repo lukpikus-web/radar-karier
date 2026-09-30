@@ -5,7 +5,6 @@ Radar Karier - uruchamianie (dwuklik w ten plik).
 Otwiera okno aplikacji w Microsoft Edge (albo Chrome) w trybie aplikacji -
 osobne okno bez paska adresu, rysowane przez karte graficzna.
 Dane: radar.db w tym folderze. Dziennik: radar.log.
-Poprzednia wersja okna: "Radar Karier - stara wersja.pyw".
 """
 import os
 import sys

@@ -1,227 +1,108 @@
-RADAR KARIER — jak używać
-=========================
+RADAR KARIER
+============
+Zbiera oferty pracy z kilku serwisów w jedną listę, dopasowuje je do
+Twojego CV i pozwala oznaczać, na co aplikujesz. Działa na Twoim
+komputerze — nic nie jest wysyłane do żadnej chmury.
 
-URUCHAMIANIE
-------------
-Kliknij dwa razy plik  "Radar Karier.pyw"
-(albo start.bat — robi to samo).
 
-Otworzy się okno aplikacji — to Microsoft Edge (albo Chrome) w trybie
-aplikacji: osobne okno bez paska adresu, rysowane przez kartę graficzną,
-dlatego przewijanie jest płynne. Gdy nie ma ani Edge, ani Chrome, aplikacja
-otworzy się jako karta w Twojej domyślnej przeglądarce.
-Zamknięcie okna zamyka aplikację (po kilkunastu sekundach).
-Oferty otwierają się w Twojej zwykłej przeglądarce, gdzie jesteś zalogowany.
+1. INSTALACJA (raz)
+-------------------
+Potrzebujesz Windows i Pythona:
+  - wejdź na python.org → Downloads → pobierz i zainstaluj,
+  - w instalatorze ZAZNACZ "Add Python to PATH".
+Pobierz aplikację z GitHuba (Code → Download ZIP) i rozpakuj w dowolnym
+folderze. Nic więcej nie trzeba instalować.
 
-Po starcie aplikacja pokazuje oferty zapisane w bazie — NIE pobiera nowych
-sama. Żeby pobrać świeże oferty, kliknij niebieski przycisk "Odśwież oferty"
-(albo F5). Możesz w tym czasie normalnie przeglądać i oznaczać oferty.
 
-Skrót na pulpicie: kliknij prawym na "Radar Karier.pyw"
+2. URUCHOMIENIE
+---------------
+Kliknij dwa razy "Radar Karier.pyw" (albo start.bat).
+Otworzy się okno aplikacji (w Edge albo Chrome, bez paska adresu).
+Zamknięcie okna zamyka aplikację.
+
+Skrót na pulpicie: prawy przycisk na "Radar Karier.pyw"
 → Wyślij do → Pulpit (utwórz skrót).
 
-Poprzednia wersja okna (bez Edge): "Radar Karier - stara wersja.pyw".
-Korzysta z tej samej bazy radar.db.
 
-
-WYGLĄD
-------
-Każda oferta to osobna karta: tytuł, firma, miejsce, etykiety (zdalnie,
-wynagrodzenie, umowa, źródło…), krótki opis, a na dole statusy i notatka.
-Kolorowy pasek z lewej pokazuje status (niebieski = nowa, pomarańczowy =
-do aplikowania, zielony = zaaplikowana, szary = odrzucona/nieciekawa).
-Lista jest jedna, bez stron — kolejne karty doczytują się same, gdy
-przewijasz w dół. Kliknięcie tytułu albo "Otwórz ofertę ↗" otwiera ofertę;
-prawy przycisk myszy na karcie: otwórz / kopiuj link / obowiązki.
-Okno dopasowuje się też do wąskiego ekranu (np. telefonu).
-
-
-DOPASOWANIE DO CV (przycisk "Dodaj CV" / "Moje CV" u góry)
-------------------------------------------------------------
-1. Kliknij "Wybierz plik z CV" (albo upuść plik) i wybierz CV (PDF, DOCX, ODT albo TXT)
-   — albo wklej tekst CV. Sprawdź, czy tekst wczytał się poprawnie.
-2. Po prawej jest lista Twoich umiejętności wykryta z CV. Dopisz, czego
-   brakuje (jedna w linii), usuń, czego nie chcesz. Z tej listy liczy
-   się dopasowanie.
-3. "Zapisz".
-Każda oferta dostaje wtedy "Dopasowanie X%" (zielone 70%+, żółte 45–69%)
-oraz linijkę "✓ co pasuje  brakuje: czego nie masz". Sortuj → "Najlepiej
-dopasowane do CV" ustawia najlepsze na górze, a Widok → "Dopasowane do CV
-(50%+)" chowa słabo pasujące.
-"~" przy wyniku (np. "~75%") = szacunek z samego tytułu (np. LinkedIn bez
-opisu). Po kliknięciu "▾ Obowiązki i wymagania" wynik liczy się dokładnie.
-Wynik to: ile umiejętności z oferty masz w CV + podobieństwo treści CV
-i oferty. To podpowiedź, nie wyrocznia — czytaj też same oferty.
-CV zostaje na Twoim komputerze (w radar.db) — nic nie jest wysyłane.
-Jeśli PDF się nie wczyta (np. skan), otwórz CV, Ctrl+A, Ctrl+C i wklej.
-
-
-OBOWIĄZKI I WYMAGANIA
----------------------
-Pod opisem każdej karty jest "▾ Obowiązki i wymagania". Kliknięcie
-pobiera pełną stronę oferty i pokazuje ją podzieloną na części: Opis,
-Obowiązki, Wymagania, Mile widziane, Oferujemy (tyle, ile serwis podaje).
-"▴ Zwiń szczegóły" chowa je z powrotem.
-
-Pobrany opis zapisuje się w radar.db — następnym razem otwiera się od
-razu, bez internetu. "pobierz ponownie" ściąga go jeszcze raz (np. gdy
-pracodawca zmienił ogłoszenie). Gdy oferta już wygasła albo serwis nie
-odpowiada, zobaczysz komunikat i "Spróbuj ponownie".
-Zlecenia z Useme / WorkConnect zwykle nie mają podziału na sekcje —
-wtedy pokazuje się po prostu pełny opis zlecenia.
-
-
-STATUSY I NOTATKI
+3. PIERWSZE KROKI
 -----------------
-  - Status: kliknij Nowa / Do aplikowania / Zaaplikowana / Odrzucona /
-    Nieciekawa bezpośrednio na karcie oferty.
-  - Notatka: kliknij pole "notatka…" po prawej na karcie i pisz;
-    zapisuje się sama (Enter kończy pisanie).
+  1) "Dodaj CV" → wybierz plik (PDF, DOCX, ODT, TXT) → "Zapisz".
+     Aplikacja sama wyciągnie z CV stanowiska i umiejętności, po których
+     będzie szukać. Bez CV: wpisz frazy w "⚙ Ustawienia".
+  2) "⚙ Ustawienia" → ustaw miasto, poziom stanowisk i słowa do
+     pomijania (np. senior). Wszystko jest opcjonalne.
+  3) "Odśwież oferty". Pobieranie trwa od kilkudziesięciu sekund do kilku
+     minut — w tym czasie możesz normalnie przeglądać listę.
 
-Każda zmiana zapisuje się NATYCHMIAST do pliku radar.db, a na dole okna
-pojawia się "✓ zapisany" z godziną. Gdyby zapis się nie udał, wyskoczy
-okienko z błędem — nic nie ginie po cichu.
-
-
-NA TELEFONIE (przez Wi-Fi)
---------------------------
-1. Na komputerze: Ustawienia → zakładka "Telefon" → zaznacz
-   "Włącz dostęp z telefonu".
-   Przy pierwszym razie Windows zapyta o dostęp do sieci — kliknij
-   "Zezwól" (sieć prywatna / domowa).
-2. Zeskanuj aparatem telefonu kod QR z tej zakładki — aplikacja otworzy
-   się w przeglądarce telefonu i zaloguje sama.
-   (Albo wpisz na telefonie pokazany adres, np. http://192.168.1.23:8765,
-   i podaj 6-cyfrowy PIN.)
-3. Telefon zapamiętuje logowanie. Następnym razem otwórz ten sam adres —
-   najwygodniej dodaj go do ekranu głównego ("Dodaj do ekranu głównego"
-   w menu przeglądarki).
-
-Telefon i komputer korzystają z tej samej bazy: oferty, statusy,
-notatki, CV, ustawienia i filtry są wspólne — zmianę na telefonie od
-razu widać na komputerze i odwrotnie.
-Warunki: telefon w tej samej sieci co komputer, a Radar Karier
-na komputerze otwarty. Działa też, gdy laptop korzysta z hotspotu
-z telefonu (telefon na danych komórkowych udostępnia internet laptopowi).
-Nie działa, gdy telefon i komputer są w różnych sieciach (np. telefon
-na danych komórkowych, a komputer na domowym Wi-Fi).
-
-Strona "niedostępna" po zeskanowaniu kodu? Najczęściej blokuje to zapora
-Windows, bo sieć (np. hotspot z telefonu) jest ustawiona jako PUBLICZNA.
-Aplikacja pokaże wtedy ostrzeżenie w zakładce "Telefon". Rozwiązanie:
-Ustawienia Windows → Sieć i Internet → Wi-Fi → nazwa sieci →
-"Typ profilu sieci": Prywatna. Albo: Start → "Zezwalaj aplikacji przez
-Zaporę systemu Windows" → "Zmień ustawienia" → przy Python / pythonw
-zaznacz też "Publiczna".
-Bezpieczeństwo: bez PIN-u nikt w sieci nie zobaczy Twoich danych;
-po 5 błędnych PIN-ach telefon jest blokowany na 15 minut. "Zmień PIN"
-wylogowuje wszystkie telefony. Dostęp wyłączysz tym samym polem.
-Jeśli adres komputera się zmieni (np. po restarcie routera), zeskanuj
-kod QR ponownie.
+Aplikacja sama NIE pobiera ofert przy starcie — tylko po kliknięciu
+"Odśwież oferty" (albo F5).
 
 
-FILTRY
-------
-Kliknij "pigułkę", żeby ją włączyć (niebieska), drugi raz — wyłączyć.
-Kilka w jednym wierszu = dowolna z nich (np. LinkedIn + Useme).
-Żadna w wierszu = bez ograniczeń. Kliknięcie w licznik na górze
-(np. "Zaaplikowane") też filtruje.
-Aplikacja zapamiętuje włączone filtry — po ponownym otwarciu są takie
-same, aż je zmienisz. "✕ Wyczyść filtry" (po prawej, przy "Widok")
-wraca do pełnej listy. Wyszukiwanie (pole "Szukaj") nie jest zapamiętywane.
+4. CODZIENNE UŻYWANIE
+---------------------
+  - Kliknij tytuł albo "Otwórz ofertę ↗" — oferta otworzy się w Twojej
+    zwykłej przeglądarce.
+  - "▾ Obowiązki i wymagania" — pełny opis oferty, bez wychodzenia
+    z aplikacji.
+  - Status na karcie: Nowa / Do aplikowania / Zaaplikowana / Odrzucona /
+    Nieciekawa. Obok pole na notatkę. Zapisuje się od razu.
+  - Filtry nad listą: kliknij "pigułkę", żeby ją włączyć, drugi raz —
+    wyłączyć. Aplikacja je pamięta. "✕ Wyczyść filtry" wraca do całości.
+  - Sortuj → "Najlepiej dopasowane do CV": najlepsze oferty na górze.
+    "Dopasowanie X%" to podpowiedź; "~" oznacza szacunek z samego tytułu.
+
+Skróty: F5 — odśwież oferty, Ctrl+F — szukaj, Esc — wyczyść szukanie.
 
 
-OTWIERANIE OFERT (przejście na stronę serwisu)
-----------------------------------------------
-  - kliknij tytuł oferty (albo firmę, opis, datę),
-  - albo "Otwórz ofertę ↗" przy notatce,
-  - prawy przycisk myszy na karcie: otwórz albo kopiuj link.
+5. NA TELEFONIE (ta sama sieć Wi-Fi)
+------------------------------------
+  1) Na komputerze: Ustawienia → "Telefon" → "Włącz dostęp z telefonu".
+     Gdy Windows zapyta o dostęp do sieci — "Zezwól".
+  2) Zeskanuj aparatem telefonu kod QR z tej zakładki.
+Telefon pamięta logowanie i widzi te same dane co komputer. Aplikacja
+na komputerze musi być wtedy otwarta. Działa też, gdy laptop korzysta
+z hotspotu tego telefonu.
 
-F5 — odśwież oferty. Ctrl+F — szukaj. Esc — wyczyść wyszukiwanie.
+Strona "niedostępna" na telefonie? Zwykle sieć jest ustawiona w Windows
+jako publiczna. Ustawienia Windows → Sieć i Internet → Wi-Fi → nazwa
+sieci → "Typ profilu sieci": Prywatna. (Aplikacja podpowiada to też
+w zakładce "Telefon".)
 
 
-GDZIE SĄ DANE
+6. SKĄD SĄ OFERTY
+-----------------
+Szukane po Twoich frazach:
+  pracuj.pl, LinkedIn, RocketJobs, Just Join IT, OLX Praca, Useme
+Stałe kategorie marketingu i sprzedaży (bez fraz):
+  Wellfound (startupy), WorkConnect (zlecenia; domyślnie wyłączony)
+Które serwisy przeszukiwać — Ustawienia → "Lokalizacja i źródła"
+oraz tabela fraz w pierwszej zakładce.
+
+LinkedIn jest pytany rzadko (najwyżej raz na 2 godziny), żeby nie
+blokował dostępu. Gdy odmówi, aplikacja robi 6 godzin przerwy.
+No Fluff Jobs i startup.jobs nie są pobierane — blokują automaty.
+
+
+7. TWOJE DANE
 -------------
-radar.db       — baza (oferty, Twoje statusy, notatki, ustawienia i CV)
-kopie\         — automatyczna kopia bazy raz dziennie, 14 ostatnich dni
-radar.log      — dziennik (co pobrano, co odpadło, błędy)
-oferty.json    — dane ze starej wersji; zostawione jako zapas, nieużywane
+radar.db   — wszystko: oferty, statusy, notatki, CV, ustawienia
+kopie\     — automatyczna kopia bazy raz dziennie (14 ostatnich dni)
+radar.log  — dziennik: co pobrano, co odpadło, błędy
 
-Statusy są trzymane osobno od ofert pobieranych z internetu, więc
-odświeżanie nie ma jak ich nadpisać. Każda zmiana jest też zapisywana
-w historii zmian w bazie.
+Przy aktualizacji aplikacji podmieniaj tylko pliki programu — NIE usuwaj
+radar.db ani folderu kopie. Odświeżanie ofert nigdy nie zmienia Twoich
+statusów ani notatek.
 
-
-USTAWIENIA — CZEGO SZUKAĆ (przycisk "⚙ Ustawienia" obok "Odśwież oferty")
-----------------------------------------------------------------------
-NA START aplikacja nie ma żadnych fraz ani filtrów. Najprościej: dodaj CV
-("Dodaj CV") — aplikacja sama wyciągnie z niego frazy (stanowiska
-i umiejętności) i wpisze je tu z kategorią "Z CV". Możesz je zmieniać,
-usuwać i dopisywać własne. Frazy "Z CV" wymieniają się, gdy zmienisz CV;
-fraza zmieniona przez Ciebie zostaje. Bez CV — wpisz frazy ręcznie.
-
-Gdy klikniesz "Odśwież oferty" bez żadnych filtrów (słowa pomijane,
-poziomy, języki, miasto), aplikacja zapyta: "Przejdź do filtrów" otwiera
-zakładkę Filtry, "Pomiń filtry" pobiera oferty bez nich.
-Zakładka "Stanowiska i słowa kluczowe":
-  Frazy, po których aplikacja szuka ofert — nazwy stanowisk albo słowa
-  kluczowe (np. "specjalista ds. marketingu", "google ads"). Przy każdej:
-  kategoria (Twoja etykieta, pojawia się w filtrach) i serwisy, w których
-  szukać (pracuj.pl / LinkedIn / Useme).
-  Dodawanie: wpisz frazę, kliknij "+ Dodaj frazę" (albo Enter).
-  Zmiana: zaznacz frazę na liście, popraw, "Zapisz zmianę w zaznaczonej".
-Zakładka "Filtry":
-  - słowa, przy których oferta jest pomijana (w tytule), np. senior,
-  - poziomy stanowisk, które Cię interesują (junior, specjalista…),
-  - języki, których nie znasz (np. german) — oferty z nimi są pomijane.
-Zakładka "Lokalizacja i źródła":
-  miasto (puste = cała Polska), miejscowości w okolicy, oferty zdalne
-  tak/nie, które serwisy przeszukiwać. WorkConnect jest domyślnie
-  wyłączony — pokazuje stałe kategorie marketingu i sprzedaży.
-
-"Zapisz" zapisuje ustawienia w radar.db (zostają po zamknięciu aplikacji)
-i od razu usuwa z listy oferty, które już nie pasują — ale NIGDY te,
-którym nadałeś status albo dopisałeś notatkę. Potem aplikacja pyta, czy
-pobrać oferty według nowych ustawień.
-"Przywróć domyślne" czyści formularz: bez fraz i filtrów, cała Polska.
-
-NOWA OSOBA: jeśli dostałeś aplikację od kogoś, na liście są jego oferty.
-Ustaw swoje frazy i filtry, zapisz, a potem w zakładce "Lokalizacja
-i źródła" kliknij "Usuń wszystkie oferty i zacznij od zera…" (kopia
-starej bazy trafia do folderu kopie) i "Odśwież oferty".
+Dostałeś aplikację od kogoś, razem z jego ofertami? Ustawienia →
+"Lokalizacja i źródła" → "Usuń wszystkie oferty i zacznij od zera…"
+(stara baza trafi do folderu kopie).
 
 
-CO POBIERA
-----------
-  - pracuj.pl    (etaty; do 3 stron wyników na frazę)
-  - RocketJobs   (etaty: marketing, sprzedaż, biuro — siostrzany serwis justjoin.it)
-  - Just Join IT (firmy technologiczne — też marketing, sprzedaż, analityka;
-                  szuka po tych samych frazach co RocketJobs)
-  - OLX Praca    (ogłoszenia o pracę; OLX szuka w całej Polsce, a jeśli
-                  ustawisz miasto, aplikacja zostawia je, okolice i zdalne)
-  - LinkedIn     (etaty: Twoje miasto + praca zdalna, albo cała Polska)
-  - Useme        (zlecenia freelance)
-  - WorkConnect  (zlecenia freelance — publiczne podglądy kategorii)
-  - Wellfound    (startupy — stałe kategorie marketing i sprzedaż w Polsce;
-                  frazy tu nie działają, oferty dla rynków zagranicznych
-                  typu DACH / Nordic / "German speaking" są pomijane)
-Który serwis przeszukiwać przy danej frazie — w Ustawieniach.
-No Fluff Jobs i startup.jobs nie są pobierane, bo blokują automatyczne
-pobieranie ofert.
-
-LINKEDIN — pytany rzadko i grzecznie, żeby nie blokował:
-  - najwyżej raz na 2 godziny (częstsze "Odśwież" pomija LinkedIn,
-    a na dole okna widać, kiedy będzie następny raz),
-  - najwyżej 12 zapytań na raz, co 6 sekund (= 6 fraz przy włączonej
-    pracy zdalnej; w Ustawieniach licznik "LinkedIn: X z max 6"),
-  - gdy LinkedIn odmówi (błąd 429), aplikacja od razu przestaje go pytać
-    i robi 6 godzin przerwy. Oferty z LinkedIn już zapisane zostają.
-
-WYGASANIE: oferta jest oznaczana jako wygasła dopiero, gdy nie pojawi się
-w dwóch kolejnych odświeżeniach — i tylko wtedy, gdy jej serwis odpowiedział
-bez błędów. Oferty, którym nadałeś status, nigdy nie są chowane.
-
-
-COŚ NIE DZIAŁA
---------------
-Wyślij Claude plik radar.log z tego folderu.
+8. COŚ NIE DZIAŁA
+-----------------
+  - Okno się nie otwiera: sprawdź, czy Python jest zainstalowany
+    z opcją "Add Python to PATH" (start.bat powie, jeśli go nie ma).
+  - Brak nowych ofert: kliknij "Odśwież oferty" i zajrzyj na dół okna
+    — tam jest podsumowanie i ewentualne błędy.
+  - Szczegóły problemu są w pliku radar.log — dołącz go, gdy prosisz
+    o pomoc.

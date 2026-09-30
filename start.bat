@@ -19,12 +19,3 @@ echo  zaznacz opcje "Add Python to PATH".
 echo.
 pause
 exit /b 1
-
-:brak_tk
-echo.
-echo  Python jest, ale bez modulu okienek (tkinter).
-echo  Uruchom instalator Pythona jeszcze raz, wybierz "Modify"
-echo  i zaznacz "tcl/tk and IDLE".
-echo.
-pause
-exit /b 1
