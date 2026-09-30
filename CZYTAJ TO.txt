@@ -72,7 +72,7 @@ w zakładce "Telefon".)
 6. SKĄD SĄ OFERTY
 -----------------
 Szukane po Twoich frazach:
-  pracuj.pl, LinkedIn, RocketJobs, Just Join IT, OLX Praca, Useme
+  pracuj.pl, praca.pl, LinkedIn, RocketJobs, Just Join IT, OLX Praca, Useme
 Stałe kategorie marketingu i sprzedaży (bez fraz):
   Wellfound (startupy), WorkConnect (zlecenia; domyślnie wyłączony)
 Portale prawnicze — wszystkie aktualne oferty, bez fraz (domyślnie

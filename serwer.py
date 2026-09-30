@@ -264,7 +264,7 @@ class Aplikacja:
         for fraza, typ in dopasowanie.frazy_z_cv(tekst, umiejetnosci):
             if dopasowanie.uprosc(fraza) in istniejace:
                 continue
-            zrodla = ["pracuj.pl", "RocketJobs", "Just Join IT", "OLX"]
+            zrodla = ["pracuj.pl", "praca.pl", "RocketJobs", "Just Join IT", "OLX"]
             if typ == "stanowisko" and w_linkedin < limit:
                 zrodla.insert(1, "LinkedIn")
                 w_linkedin += 1

@@ -27,6 +27,7 @@ KEYWORDS = []            # pracuj.pl: (fraza, kategoria)
 KEYWORDS_LINKEDIN = []   # LinkedIn: (fraza, kategoria)
 KEYWORDS_ROCKET = []     # RocketJobs: (fraza, kategoria)
 KEYWORDS_JUSTJOIN = []   # Just Join IT: (fraza, kategoria)
+KEYWORDS_PRACA = []      # praca.pl: (fraza, kategoria)
 KEYWORDS_OLX = []        # OLX: (fraza, kategoria)
 KEYWORDS_USEME = []      # Useme: fraza
 STOP_TYTUL = []          # slowa w tytule, przy ktorych oferta odpada
@@ -61,6 +62,7 @@ WELLFOUND_POMIN = ["dach", "nordic", "benelux", "german speaking", "french speak
 
 WLACZONE_ZRODLA = {
     "pracuj.pl": True,
+    "praca.pl": True,
     "LinkedIn": True,
     "RocketJobs": True,
     "Just Join IT": True,
@@ -76,6 +78,8 @@ WLACZONE_ZRODLA = {
 
 # pracuj.pl pokazuje 50 ofert na strone - ile stron brac na jedna fraze
 PRACUJ_MAX_STRON = 3
+# praca.pl pokazuje 50 ofert na strone
+PRACA_MAX_STRON = 2
 
 # Poziomy stanowisk (pracuj.pl). Kolejnosc ma znaczenie: "Mlodszy specjalista"
 # ma trafic do "Junior", a nie do "Specjalista", wiec ogolne grupy sa na koncu.
@@ -92,9 +96,9 @@ POZIOMY = [
     ("specjalista", "Specjalista (mid / regular)",   ["specjalist", "mid", "regular"]),
 ]
 
-ZRODLA = ["pracuj.pl", "LinkedIn", "RocketJobs", "Just Join IT", "OLX", "Useme",
+ZRODLA = ["pracuj.pl", "praca.pl", "LinkedIn", "RocketJobs", "Just Join IT", "OLX", "Useme",
           "WorkConnect", "Wellfound", "LegalHunts", "PraktykiPrawnicze.pl", "Mecenasi.pl"]
-ZRODLA_FRAZ = ["pracuj.pl", "LinkedIn", "RocketJobs", "Just Join IT", "OLX", "Useme"]
+ZRODLA_FRAZ = ["pracuj.pl", "praca.pl", "LinkedIn", "RocketJobs", "Just Join IT", "OLX", "Useme"]
 ZRODLA_STALE = ["WorkConnect", "Wellfound",      # stale kategorie / cale portale, bez fraz
                 "LegalHunts", "PraktykiPrawnicze.pl", "Mecenasi.pl"]
 
@@ -275,7 +279,7 @@ def domyslne_ustawienia():
         "stop_tytul": [],
         "stop_jezyk": [],
         "poziomy": [k for k, _, _ in POZIOMY],
-        "wersja": 3,
+        "wersja": 4,
         "cv_klucz": "",          # z jakiego CV sa frazy "Z CV" (zeby nie dodawac ich w kolko)
     }
 
@@ -311,13 +315,21 @@ def uzupelnij_ustawienia(u):
                 z.append("Just Join IT")
             f["zrodla"] = z
         wynik["wersja"] = 3
+    if u.get("wersja", 1) < 4:
+        # wersja 4 dodala praca.pl - szukamy tam tego, co w pracuj.pl
+        for f in wynik["frazy"]:
+            z = list(f.get("zrodla") or [])
+            if "pracuj.pl" in z and "praca.pl" not in z:
+                z.insert(z.index("pracuj.pl") + 1, "praca.pl")
+            f["zrodla"] = z
+        wynik["wersja"] = 4
     return wynik
 
 
 def zastosuj_ustawienia(u):
     """Ustawia listy, z ktorych korzysta pobieranie i filtry."""
     global KEYWORDS, KEYWORDS_LINKEDIN, KEYWORDS_USEME, KEYWORDS_ROCKET, KEYWORDS_OLX
-    global KEYWORDS_JUSTJOIN
+    global KEYWORDS_JUSTJOIN, KEYWORDS_PRACA
     global WLACZONE_ZRODLA, MIASTO, MIASTO_NAZWA
     global OKOLICE, ZDALNE, STOP_TYTUL, STOP_JEZYK, POZIOMY_OK, LINKEDIN_LOKALIZACJE
     u = uzupelnij_ustawienia(u)
@@ -328,6 +340,7 @@ def zastosuj_ustawienia(u):
     KEYWORDS_USEME = [f for f, k, z in frazy if "Useme" in z]
     KEYWORDS_ROCKET = [(f, k) for f, k, z in frazy if "RocketJobs" in z]
     KEYWORDS_JUSTJOIN = [(f, k) for f, k, z in frazy if "Just Join IT" in z]
+    KEYWORDS_PRACA = [(f, k) for f, k, z in frazy if "praca.pl" in z]
     KEYWORDS_OLX = [(f, k) for f, k, z in frazy if "OLX" in z]
     WLACZONE_ZRODLA = dict(u["zrodla"])
     MIASTO_NAZWA = u["miasto"].strip()                     # "" = cala Polska
@@ -640,6 +653,107 @@ def zrodlo_wellfound(sciezka, kategoria):
                 "termin": "",
             })
     return wynik
+
+
+# ---------------------------------------------------------------------------
+# Zrodlo: praca.pl (wyniki wyszukiwania w HTML; adres /s-fraza,slowa_m-miasto.html)
+# ---------------------------------------------------------------------------
+
+PRACA = "https://www.praca.pl"
+KROPKA_PRACA = re.compile(r'<i class="fas fa-circle listing__dot"></i>')
+
+
+def _tekst(fragment):
+    return " ".join(html_modul.unescape(re.sub(r"<[^>]+>", " ", fragment or "")).split())
+
+
+def _praca_adres(fraza, strona):
+    slowa = re.findall(r"[a-z0-9]+", uprosc(fraza))
+    adres = "%s/s-%s" % (PRACA, ",".join(slowa) or "praca")
+    if MIASTO_NAZWA:
+        adres += "_m-" + "-".join(re.findall(r"[a-z0-9]+", uprosc(MIASTO_NAZWA)))
+    if strona > 1:
+        adres += "_%d" % strona
+    return adres + ".html"
+
+
+def _praca_data(tekst):
+    """'4 godz.' -> dzis, '3 dni' -> 3 dni temu (tak podaje praca.pl)."""
+    m = re.match(r"(\d+)\s*(min|godz|dni|dzie)", (tekst or "").strip())
+    if not m:
+        return ""
+    dni = int(m.group(1)) if m.group(2) in ("dni", "dzie") else 0
+    return time.strftime("%Y-%m-%d", time.localtime(time.time() - dni * 86400))
+
+
+def _praca_strona(fraza, kategoria, strona):
+    html = pobierz(_praca_adres(fraza, strona))
+    wynik = []
+    for b in re.findall(r'<li class="listing__item[^"]*">(.*?)</li>', html, re.DOTALL):
+        t = re.search(r'class="listing__title" href="([^"#]+)[^"]*" data-id="(\d+)"[^>]*>(.*?)</a>', b, re.DOTALL)
+        if not t:
+            continue
+        firma = re.search(r'class="listing__employer-name[^"]*"[^>]*>(.*?)</(?:a|span)>', b, re.DOTALL)
+        # oferta bez nazwy pracodawcy: "Klient portalu Praca.pl"
+        anonim = re.search(r'class="listing__origin">(.*?)<i class="fas fa-circle listing__dot">', b, re.DOTALL)
+        miejsce = re.search(r'class="listing__location-name">(.*?)<span class="listing__work-model">(.*?)</span>\s*</span>',
+                            b, re.DOTALL)
+        if miejsce:
+            lokalizacja, tryb = _tekst(miejsce.group(1)), _tekst(miejsce.group(2))
+        else:
+            m = re.search(r'class="listing__location-name">(.*?)</span>', b, re.DOTALL)
+            lokalizacja, tryb = (_tekst(m.group(1)) if m else ""), ""
+        tryb = re.sub(r"^praca\s+", "", tryb)
+        szczegoly = re.search(r'class="listing__main-details">(.*?)</div>', b, re.DOTALL)
+        czesci = [_tekst(c) for c in KROPKA_PRACA.split(szczegoly.group(1))] if szczegoly else []
+        placa = next((c for c in czesci if "zł" in c or "pln" in c.lower()), "")
+        umowa = next((c for c in czesci if "umowa" in c or "kontrakt" in c or "b2b" in c.lower()), "")
+        etat = next((c for c in czesci if "etat" in c), "")
+        poziom = czesci[0] if czesci and czesci[0] not in (placa, umowa, etat) else ""
+        data = re.search(r'class="listing__secondary-details[^"]*">\s*<span>([^<]*)', b)
+        opis = re.search(r'class="listing__teaser">(.*?)</div>', b, re.DOTALL)
+        wynik.append({
+            "id": "pracapl:" + t.group(2),
+            "zrodlo": "praca.pl",
+            "tytul": _tekst(t.group(3)),
+            "firma": _tekst(firma.group(1)) if firma else _tekst(anonim.group(1)) if anonim else "",
+            "lokalizacja": lokalizacja,
+            "warszawa": w_okolicy(lokalizacja),
+            "url": t.group(1),
+            "opublikowano": _praca_data(data.group(1)) if data else "",
+            "wynagrodzenie": placa,
+            "kategoria": kategoria,
+            "zdalna": "zdaln" in tryb,
+            "tryb": tryb,
+            "umowa": ", ".join(x for x in (umowa, etat) if x),
+            "poziom": poziom,
+            "opis": _tekst(opis.group(1))[:600] if opis else "",
+            "termin": "",
+        })
+    return wynik
+
+
+def zrodlo_praca(fraza, kategoria):
+    wszystkie, widziane = [], set()
+    for strona in range(1, PRACA_MAX_STRON + 1):
+        if strona > 1:
+            time.sleep(PRZERWA)
+        oferty = _praca_strona(fraza, kategoria, strona)
+        nowe = [o for o in oferty if o["id"] not in widziane]   # oferty wyrozniane powtarzaja sie
+        widziane.update(o["id"] for o in nowe)
+        wszystkie += nowe
+        if len(oferty) < 50 or not nowe:                        # ostatnia strona wynikow
+            break
+    return wszystkie
+
+
+def _praca_sekcje(html):
+    """Strona oferty praca.pl: sekcje sa w blokach "szDane" z naglowkiem "szDaneHeader"."""
+    bloki = re.findall(r'<div class="szDane">(.*?)</div>', html, re.DOTALL)
+    if not bloki:
+        return None
+    return "<div>%s</div>" % "".join(
+        re.sub(r'<p class="szDaneHeader">(.*?)</p>', r"<h3>\1</h3>", b, flags=re.DOTALL) for b in bloki)
 
 
 # ---------------------------------------------------------------------------
@@ -1384,6 +1498,8 @@ def pobierz_szczegoly(oferta):
             d = _legalhunts_zapytanie("jobs?select=description&id=eq." + urllib.parse.quote(ident))
             if isinstance(d, list) and d and d[0].get("description"):
                 html = "<div>%s</div>" % d[0]["description"]
+        elif zrodlo == "praca.pl":
+            html = _praca_sekcje(pobierz(url))
         elif zrodlo == "PraktykiPrawnicze.pl" and ident.isdigit():
             d = json.loads(pobierz(PRAKTYKI_API + "/" + ident + "?_fields=content", accept="application/json"))
             tresc = ((d.get("content") or {}) if isinstance(d, dict) else {}).get("rendered") or ""
@@ -1467,6 +1583,10 @@ def zbierz_wszystko(log=print, przerwij=None, pomin=None):
         for fraza, kat in KEYWORDS:
             zadania.append(("pracuj.pl", "'%s'" % fraza,
                             lambda f=fraza, k=kat: zrodlo_pracuj(f, k), PRZERWA))
+    if wlaczone("praca.pl"):
+        for fraza, kat in KEYWORDS_PRACA:
+            zadania.append(("praca.pl", "'%s'" % fraza,
+                            lambda f=fraza, k=kat: zrodlo_praca(f, k), PRZERWA))
     if wlaczone("RocketJobs"):
         for fraza, kat in KEYWORDS_ROCKET:
             zadania.append(("RocketJobs", "'%s'" % fraza,
