@@ -264,7 +264,7 @@ class Aplikacja:
         for fraza, typ in dopasowanie.frazy_z_cv(tekst, umiejetnosci):
             if dopasowanie.uprosc(fraza) in istniejace:
                 continue
-            zrodla = ["pracuj.pl", "RocketJobs", "OLX"]
+            zrodla = ["pracuj.pl", "RocketJobs", "Just Join IT", "OLX"]
             if typ == "stanowisko" and w_linkedin < limit:
                 zrodla.insert(1, "LinkedIn")
                 w_linkedin += 1
@@ -411,7 +411,8 @@ class Aplikacja:
             return {"trwa": True}
         if not self.ustawienia.get("frazy") and self.cv:
             self.dodaj_frazy_z_cv(wymus=True)
-        if not self.ustawienia.get("frazy") and not radar.WLACZONE_ZRODLA.get("WorkConnect"):
+        if not self.ustawienia.get("frazy") and not any(radar.WLACZONE_ZRODLA.get(z)
+                                                        for z in radar.ZRODLA_STALE):
             raise BladUzytkownika("BRAK_FRAZ")
         pomin = self._pomin_linkedin()
         self.przerwij.clear()

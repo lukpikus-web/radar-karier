@@ -195,12 +195,19 @@ CO POBIERA
 ----------
   - pracuj.pl    (etaty; do 3 stron wyników na frazę)
   - RocketJobs   (etaty: marketing, sprzedaż, biuro — siostrzany serwis justjoin.it)
+  - Just Join IT (firmy technologiczne — też marketing, sprzedaż, analityka;
+                  szuka po tych samych frazach co RocketJobs)
   - OLX Praca    (ogłoszenia o pracę; OLX szuka w całej Polsce, a jeśli
                   ustawisz miasto, aplikacja zostawia je, okolice i zdalne)
   - LinkedIn     (etaty: Twoje miasto + praca zdalna, albo cała Polska)
   - Useme        (zlecenia freelance)
   - WorkConnect  (zlecenia freelance — publiczne podglądy kategorii)
+  - Wellfound    (startupy — stałe kategorie marketing i sprzedaż w Polsce;
+                  frazy tu nie działają, oferty dla rynków zagranicznych
+                  typu DACH / Nordic / "German speaking" są pomijane)
 Który serwis przeszukiwać przy danej frazie — w Ustawieniach.
+No Fluff Jobs i startup.jobs nie są pobierane, bo blokują automatyczne
+pobieranie ofert.
 
 LINKEDIN — pytany rzadko i grzecznie, żeby nie blokował:
   - najwyżej raz na 2 godziny (częstsze "Odśwież" pomija LinkedIn,

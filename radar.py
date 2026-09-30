@@ -25,6 +25,7 @@ from html.parser import HTMLParser
 KEYWORDS = []            # pracuj.pl: (fraza, kategoria)
 KEYWORDS_LINKEDIN = []   # LinkedIn: (fraza, kategoria)
 KEYWORDS_ROCKET = []     # RocketJobs: (fraza, kategoria)
+KEYWORDS_JUSTJOIN = []   # Just Join IT: (fraza, kategoria)
 KEYWORDS_OLX = []        # OLX: (fraza, kategoria)
 KEYWORDS_USEME = []      # Useme: fraza
 STOP_TYTUL = []          # slowa w tytule, przy ktorych oferta odpada
@@ -46,13 +47,26 @@ WORKCONNECT_STRONY = [
     "/zlecenia/marketing-i-sprzedaz/sprzedaz-i-obsluga-klienta",
 ]
 
+# Wellfound - startupy: stale strony kategorii w Polsce (frazy tu nie dzialaja)
+WELLFOUND_STRONY = [
+    ("/role/l/marketing/poland", "Startup: marketing"),
+    ("/role/l/sales/poland", "Startup: sprzedaż"),
+    ("/role/l/account-executive/poland", "Startup: sprzedaż"),
+    ("/role/l/business-development/poland", "Startup: sprzedaż"),
+]
+# oferty dla rynkow zagranicznych / z jezykiem innym niz polski i angielski
+WELLFOUND_POMIN = ["dach", "nordic", "benelux", "german speaking", "french speaking",
+                   "dutch speaking", "italian speaking", "spanish speaking"]
+
 WLACZONE_ZRODLA = {
     "pracuj.pl": True,
     "LinkedIn": True,
     "RocketJobs": True,
+    "Just Join IT": True,
     "OLX": True,
     "Useme": True,
     "WorkConnect": False,    # stale kategorie marketingowe - wlacza sie w Ustawieniach
+    "Wellfound": True,       # stale kategorie startupowe (marketing, sprzedaz)
 }
 
 # pracuj.pl pokazuje 50 ofert na strone - ile stron brac na jedna fraze
@@ -73,8 +87,10 @@ POZIOMY = [
     ("specjalista", "Specjalista (mid / regular)",   ["specjalist", "mid", "regular"]),
 ]
 
-ZRODLA = ["pracuj.pl", "LinkedIn", "RocketJobs", "OLX", "Useme", "WorkConnect"]
-ZRODLA_FRAZ = ["pracuj.pl", "LinkedIn", "RocketJobs", "OLX", "Useme"]   # WorkConnect: stale kategorie
+ZRODLA = ["pracuj.pl", "LinkedIn", "RocketJobs", "Just Join IT", "OLX", "Useme",
+          "WorkConnect", "Wellfound"]
+ZRODLA_FRAZ = ["pracuj.pl", "LinkedIn", "RocketJobs", "Just Join IT", "OLX", "Useme"]
+ZRODLA_STALE = ["WorkConnect", "Wellfound"]      # stale kategorie, bez fraz
 
 PRZERWA = 0.8            # sekundy miedzy zapytaniami
 
@@ -253,7 +269,7 @@ def domyslne_ustawienia():
         "stop_tytul": [],
         "stop_jezyk": [],
         "poziomy": [k for k, _, _ in POZIOMY],
-        "wersja": 2,
+        "wersja": 3,
         "cv_klucz": "",          # z jakiego CV sa frazy "Z CV" (zeby nie dodawac ich w kolko)
     }
 
@@ -281,12 +297,21 @@ def uzupelnij_ustawienia(u):
                 z += [x for x in ("RocketJobs", "OLX") if x not in z]
             f["zrodla"] = z
         wynik["wersja"] = 2
+    if u.get("wersja", 1) < 3:
+        # wersja 3 dodala Just Join IT - to samo API co RocketJobs, szukamy po tych samych frazach
+        for f in wynik["frazy"]:
+            z = list(f.get("zrodla") or [])
+            if "RocketJobs" in z and "Just Join IT" not in z:
+                z.append("Just Join IT")
+            f["zrodla"] = z
+        wynik["wersja"] = 3
     return wynik
 
 
 def zastosuj_ustawienia(u):
     """Ustawia listy, z ktorych korzysta pobieranie i filtry."""
     global KEYWORDS, KEYWORDS_LINKEDIN, KEYWORDS_USEME, KEYWORDS_ROCKET, KEYWORDS_OLX
+    global KEYWORDS_JUSTJOIN
     global WLACZONE_ZRODLA, MIASTO, MIASTO_NAZWA
     global OKOLICE, ZDALNE, STOP_TYTUL, STOP_JEZYK, POZIOMY_OK, LINKEDIN_LOKALIZACJE
     u = uzupelnij_ustawienia(u)
@@ -296,6 +321,7 @@ def zastosuj_ustawienia(u):
     KEYWORDS_LINKEDIN = [(f, k) for f, k, z in frazy if "LinkedIn" in z]
     KEYWORDS_USEME = [f for f, k, z in frazy if "Useme" in z]
     KEYWORDS_ROCKET = [(f, k) for f, k, z in frazy if "RocketJobs" in z]
+    KEYWORDS_JUSTJOIN = [(f, k) for f, k, z in frazy if "Just Join IT" in z]
     KEYWORDS_OLX = [(f, k) for f, k, z in frazy if "OLX" in z]
     WLACZONE_ZRODLA = dict(u["zrodla"])
     MIASTO_NAZWA = u["miasto"].strip()                     # "" = cala Polska
@@ -344,8 +370,9 @@ def pasuje_do_profilu(o):
     for slowo in STOP_TYTUL:
         if uprosc(slowo) in tytul:
             return False, "tytuł: %s" % slowo
+    jezyki = uprosc(o.get("jezyki", ""))   # wymagane jezyki podane przez serwis
     for slowo in STOP_JEZYK:
-        if uprosc(slowo) in tytul:
+        if uprosc(slowo) in tytul or (jezyki and uprosc(slowo) in jezyki):
             return False, "język: %s" % slowo
     poziom = o.get("poziom") or ""
     if poziom:
@@ -548,12 +575,92 @@ def zrodlo_workconnect(sciezka):
 
 
 # ---------------------------------------------------------------------------
-# Zrodlo 5: RocketJobs.pl (ten sam operator co justjoin.it; publiczne API
-# strony, bez logowania - te same dane, ktore widzi przegladarka)
+# Zrodlo: Wellfound (startupy; stale strony kategorii, dane w __NEXT_DATA__)
+# ---------------------------------------------------------------------------
+
+def _bez_html(tekst):
+    return " ".join(re.sub(r"<[^>]+>", " ", tekst or "").split())
+
+
+def zrodlo_wellfound(sciezka, kategoria):
+    html = pobierz("https://wellfound.com" + sciezka)
+    m = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', html, re.DOTALL)
+    if not m:
+        raise ValueError("brak danych na stronie (możliwa blokada)")
+    dane = json.loads(m.group(1))
+    obiekty = dane["props"]["pageProps"]["apolloState"]["data"]
+    wynik, widziane = [], set()
+    for klucz, firma in obiekty.items():
+        if not klucz.startswith("StartupResult:") or not isinstance(firma, dict):
+            continue
+        for ref in firma.get("highlightedJobListings") or []:
+            o = obiekty.get(ref.get("__ref", "")) if isinstance(ref, dict) else None
+            if not isinstance(o, dict) or not o.get("id") or not o.get("title"):
+                continue
+            ident = str(o["id"])
+            tytul = o["title"].strip()
+            if ident in widziane or any(s in uprosc(tytul) for s in WELLFOUND_POMIN):
+                continue
+            widziane.add(ident)
+            miejsca = [x for x in o.get("locationNames") or [] if isinstance(x, str) and x]
+            zdalna = bool(o.get("remote"))
+            start = o.get("liveStartAt")
+            try:
+                data = time.strftime("%Y-%m-%d", time.gmtime(int(start))) if start else ""
+            except (TypeError, ValueError, OverflowError):
+                data = ""
+            opis = " · ".join(x for x in [
+                (firma.get("highConcept") or "").strip(),
+                ("Doświadczenie: min. %s lat" % o["yearsExperienceMin"])
+                if o.get("yearsExperienceMin") not in (None, "", 0) else "",
+                _bez_html(o.get("description"))] if x)
+            wynik.append({
+                "id": "wellfound:" + ident,
+                "zrodlo": "Wellfound",
+                "tytul": tytul,
+                "firma": (firma.get("name") or "").strip(),
+                "lokalizacja": ", ".join(miejsca[:3]) or ("zdalnie" if zdalna else ""),
+                # "Poland" bez miasta = cala Polska
+                "warszawa": miejsca == ["Poland"] or any(w_okolicy(x) for x in miejsca),
+                "url": "https://wellfound.com/jobs/%s-%s" % (ident, o.get("slug") or ""),
+                "opublikowano": data,
+                "wynagrodzenie": (o.get("compensation") or "").strip(),
+                "kategoria": kategoria,
+                "zdalna": zdalna,
+                "tryb": "Zdalna" if zdalna else "",
+                "umowa": (o.get("jobType") or "").replace("_", " ").strip(),
+                "poziom": "",
+                "opis": opis[:600],
+                "termin": "",
+            })
+    return wynik
+
+
+# ---------------------------------------------------------------------------
+# Zrodlo 5: RocketJobs.pl i Just Join IT (ten sam operator i to samo publiczne
+# API strony, bez logowania - te same dane, ktore widzi przegladarka)
 # ---------------------------------------------------------------------------
 
 ROCKET_API = "https://rocketjobs.pl/api/candidate-api/offers"
 ROCKET_OFERTA = "https://rocketjobs.pl/oferta-pracy/%s"
+JUSTJOIN_API = "https://justjoin.it/api/candidate-api/offers"
+JUSTJOIN_OFERTA = "https://justjoin.it/job-offer/%s"
+
+# wymagane jezyki (kody z API) - nazwy po polsku i angielsku, zeby dzialal
+# filtr "Pomijaj oferty wymagajace jezykow" (pl i en pomijamy)
+JEZYKI = {
+    "de": "niemiecki german", "fr": "francuski french", "es": "hiszpański spanish",
+    "it": "włoski italian", "nl": "niderlandzki holenderski dutch", "pt": "portugalski portuguese",
+    "ru": "rosyjski russian", "uk": "ukraiński ukrainian", "cs": "czeski czech",
+    "sk": "słowacki slovak", "hu": "węgierski hungarian", "ro": "rumuński romanian",
+    "sv": "szwedzki swedish", "no": "norweski norwegian", "nb": "norweski norwegian",
+    "da": "duński danish", "fi": "fiński finnish", "lt": "litewski lithuanian",
+    "lv": "łotewski latvian", "et": "estoński estonian", "bg": "bułgarski bulgarian",
+    "hr": "chorwacki croatian", "sr": "serbski serbian", "sl": "słoweński slovenian",
+    "el": "grecki greek", "tr": "turecki turkish", "ja": "japoński japanese",
+    "zh": "chiński chinese", "ko": "koreański korean", "ar": "arabski arabic",
+    "he": "hebrajski hebrew",
+}
 
 ROCKET_POZIOMY = {"junior": "Junior", "mid": "Mid", "senior": "Senior",
                   "manager": "Manager", "c_level": "Dyrektor (C-level)"}
@@ -588,13 +695,23 @@ def _rocket_wynagrodzenie(typy):
     return tekst
 
 
-def zrodlo_rocketjobs(fraza, kategoria):
+def _jezyki_oferty(lista):
+    nazwy = []
+    for j in lista or []:
+        kod = j.get("code") or j.get("value") or j.get("name") if isinstance(j, dict) else j
+        kod = str(kod or "").strip().lower()
+        if kod and kod not in ("pl", "en"):
+            nazwy.append(JEZYKI.get(kod, kod))
+    return ", ".join(dict.fromkeys(nazwy))
+
+
+def _candidate_api(api, adres_oferty, zrodlo, prefiks, fraza, kategoria):
     params = [("keywords", fraza), ("keywordType", "any")]
     if MIASTO_NAZWA:
         params += [("city", MIASTO_NAZWA), ("cityRadius", "30")]
     params += [("itemsCount", "100"), ("from", "0"), ("sortBy", "publishedAt"),
                ("orderBy", "descending")]
-    dane = json.loads(pobierz(ROCKET_API + "?" + urllib.parse.urlencode(params),
+    dane = json.loads(pobierz(api + "?" + urllib.parse.urlencode(params),
                               accept="application/json"))
     wynik = []
     for d in (dane.get("data") or []) if isinstance(dane, dict) else []:
@@ -602,7 +719,9 @@ def zrodlo_rocketjobs(fraza, kategoria):
         if not slug or not d.get("title"):
             continue
         # "city" w API tylko ustawia kolejnosc, wiec lokalizacje sprawdzamy sami
-        miasta = [d.get("city") or ""] + [m.get("city") or "" for m in d.get("multilocation") or []
+        # RocketJobs podaje miasta w "multilocation", Just Join IT w "locations"
+        miasta = [d.get("city") or ""] + [m.get("city") or ""
+                                          for m in (d.get("multilocation") or []) + (d.get("locations") or [])
                                           if isinstance(m, dict)]
         miasta = list(dict.fromkeys(m for m in miasta if m))
         tryb = d.get("workplaceType") or ""
@@ -611,13 +730,13 @@ def zrodlo_rocketjobs(fraza, kategoria):
         umiejetnosci = [u.get("name") if isinstance(u, dict) else str(u)
                         for u in d.get("requiredSkills") or []]
         wynik.append({
-            "id": "rocketjobs:" + str(ident),
-            "zrodlo": "RocketJobs",
+            "id": prefiks + str(ident),
+            "zrodlo": zrodlo,
             "tytul": d["title"].strip(),
             "firma": (d.get("companyName") or "").strip(),
             "lokalizacja": ", ".join(miasta[:3]),
             "warszawa": any(w_okolicy(m) for m in miasta),
-            "url": ROCKET_OFERTA % slug,
+            "url": adres_oferty % slug,
             "opublikowano": (d.get("publishedAt") or "")[:10],
             "wynagrodzenie": _rocket_wynagrodzenie(d.get("employmentTypes")),
             "kategoria": kategoria,
@@ -627,8 +746,17 @@ def zrodlo_rocketjobs(fraza, kategoria):
             "poziom": ROCKET_POZIOMY.get(d.get("experienceLevel"), d.get("experienceLevel") or ""),
             "opis": ("Wymagane: " + ", ".join(u for u in umiejetnosci if u)) if umiejetnosci else "",
             "termin": "",
+            "jezyki": _jezyki_oferty(d.get("languages")),
         })
     return wynik
+
+
+def zrodlo_rocketjobs(fraza, kategoria):
+    return _candidate_api(ROCKET_API, ROCKET_OFERTA, "RocketJobs", "rocketjobs:", fraza, kategoria)
+
+
+def zrodlo_justjoin(fraza, kategoria):
+    return _candidate_api(JUSTJOIN_API, JUSTJOIN_OFERTA, "Just Join IT", "justjoin:", fraza, kategoria)
 
 
 # ---------------------------------------------------------------------------
@@ -1059,16 +1187,17 @@ def pobierz_szczegoly(oferta):
     zrodlo = oferta.get("zrodlo") or ""
     ident = (oferta.get("id") or "").split(":", 1)[-1]
     html = None
-    # OLX i RocketJobs: pelny opis jest w API strony (to samo, co widzi przegladarka)
+    # OLX, RocketJobs i Just Join IT: pelny opis jest w API strony (to samo, co widzi przegladarka)
     try:
         if zrodlo == "OLX" and ident.isdigit():
             d = json.loads(pobierz(OLX_API + ident + "/", accept="application/json"))
             opis = ((d.get("data") or {}) if isinstance(d, dict) else {}).get("description") or ""
             if opis:
                 html = "<div>%s</div>" % opis.replace("\n", "<br>")
-        elif zrodlo == "RocketJobs":
+        elif zrodlo in ("RocketJobs", "Just Join IT"):
             slug = url.rstrip("/").rsplit("/", 1)[-1]
-            d = json.loads(pobierz(ROCKET_API + "/" + urllib.parse.quote(slug),
+            api = ROCKET_API if zrodlo == "RocketJobs" else JUSTJOIN_API
+            d = json.loads(pobierz(api + "/" + urllib.parse.quote(slug),
                                    accept="application/json"))
             d = d.get("data", d) if isinstance(d, dict) else {}
             if isinstance(d, dict) and d.get("body"):
@@ -1142,6 +1271,10 @@ def zbierz_wszystko(log=print, przerwij=None, pomin=None):
         for fraza, kat in KEYWORDS_ROCKET:
             zadania.append(("RocketJobs", "'%s'" % fraza,
                             lambda f=fraza, k=kat: zrodlo_rocketjobs(f, k), PRZERWA))
+    if wlaczone("Just Join IT"):
+        for fraza, kat in KEYWORDS_JUSTJOIN:
+            zadania.append(("Just Join IT", "'%s'" % fraza,
+                            lambda f=fraza, k=kat: zrodlo_justjoin(f, k), PRZERWA))
     if wlaczone("OLX"):
         for fraza, kat in KEYWORDS_OLX:
             zadania.append(("OLX", "'%s'" % fraza,
@@ -1167,6 +1300,10 @@ def zbierz_wszystko(log=print, przerwij=None, pomin=None):
         for sciezka in WORKCONNECT_STRONY:
             zadania.append(("WorkConnect", sciezka,
                             lambda s=sciezka: zrodlo_workconnect(s), PRZERWA))
+    if wlaczone("Wellfound"):
+        for sciezka, kat in WELLFOUND_STRONY:
+            zadania.append(("Wellfound", sciezka,
+                            lambda s=sciezka, k=kat: zrodlo_wellfound(s, k), PRZERWA * 2))
 
     pytane = set()
     for nr, (zrodlo, opis, funkcja, przerwa) in enumerate(zadania, 1):
