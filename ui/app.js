@@ -448,6 +448,12 @@ function pokazZakladke(n) {
   $$("#d-ustawienia [data-panel]").forEach((p) => (p.hidden = +p.dataset.panel !== n));
 }
 $$("#d-ustawienia .zakladka").forEach((z) => z.addEventListener("click", () => pokazZakladke(+z.dataset.zakladka)));
+// serwisy bez fraz sa w dwoch zakladkach - zaznaczenie w jednej zmienia tez druga
+$("#d-ustawienia").addEventListener("change", (e) => {
+  const c = e.target;
+  if (!c.matches("#u-zrodla input, #u-zrodla-stale input")) return;
+  for (const inny of $$("#u-zrodla input, #u-zrodla-stale input")) if (inny.value === c.value) inny.checked = c.checked;
+});
 function wypelnijUstawienia(u) {
   U = u;
   $("#frazy-naglowek").innerHTML = `<tr><th style="width:36%">Fraza / stanowisko</th><th style="width:24%">Kategoria</th>${S.zrodla_fraz.map((z) => `<th class="srodek">${esc(z)}</th>`).join("")}<th></th></tr>`;
@@ -458,6 +464,7 @@ function wypelnijUstawienia(u) {
   $("#u-miasto").value = u.miasto;
   $("#u-okolice").value = u.okolice.join("\n");
   $("#u-zdalne").checked = u.zdalne;
+  $("#u-zrodla-stale").innerHTML = S.zrodla.filter((z) => !S.zrodla_fraz.includes(z)).map((z) => `<label class="wybor"><input type="checkbox" value="${esc(z)}"${u.zrodla[z] ? " checked" : ""}> ${esc(OPISY_ZRODEL[z] || z)}</label>`).join("");
   $("#u-zrodla").innerHTML = S.zrodla.map((z) => `<label class="wybor"><input type="checkbox" value="${esc(z)}"${u.zrodla[z] ? " checked" : ""}> ${esc((OPISY_ZRODEL[z] || z).replace("%d", S.linkedin.co_ile_godzin))}</label>`).join("");
 }
 function rysujFrazy() {
