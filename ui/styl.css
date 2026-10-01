@@ -98,6 +98,10 @@ a { color: var(--akcent); }
 .et.zdalnie { background: #ecfdf3; color: var(--zielony); }
 .et.kasa { background: var(--zolty-tlo); color: var(--zolty); }
 .et.wygasla { background: #fef2f2; color: var(--czerwony); }
+.et.wczesniej { background: #fff4e0; color: #9a5b00; font-weight: 700; }
+.tez-na { font-size: 12.5px; color: var(--slaby); margin-top: 6px; }
+.tez-na a { color: var(--akcent); text-decoration: none; }
+.tez-na a:hover { text-decoration: underline; }
 .et.dop-wys { background: var(--zielony); color: #fff; font-weight: 700; }
 .et.dop-sr { background: #fde68a; color: var(--zolty); font-weight: 700; }
 .et.dop-nis { background: var(--szary-tlo); color: #4b5563; font-weight: 700; }

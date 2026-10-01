@@ -161,6 +161,12 @@ function etykiety(o) {
   const d = S.cv ? S.dopasowania[o.id] : null;
   if (d) e.push([`Dopasowanie ${d.wstepny ? "~" : ""}${d.wynik}%`, d.wynik >= 70 ? "dop-wys" : d.wynik >= 45 ? "dop-sr" : "dop-nis"]);
   if (czyNowa(o)) e.push(["nowa", "nowa"]);
+  if (o.poprzednia) {                  // ta sama oferta byla juz u Ciebie (ponad 60 dni temu)
+    try {
+      const p = JSON.parse(o.poprzednia);
+      e.push([`wcześniej: ${NAZWA_STATUSU[p.status] || p.status}${p.kiedy ? " " + p.kiedy.slice(8, 10) + "." + p.kiedy.slice(5, 7) : ""}`, "wczesniej"]);
+    } catch (err) { /* stary zapis - pomijamy */ }
+  }
   if (!o.aktywna) e.push(["wygasła", "wygasla"]);
   if (o.zdalna) e.push(["zdalnie", "zdalnie"]);
   if (o.wynagrodzenie) e.push([skroc(o.wynagrodzenie, 50), "kasa"]);
@@ -204,6 +210,7 @@ function kartaHtml(o) {
     ${meta ? `<div class="meta">${esc(meta)}</div>` : ""}
     <div class="etykiety">${etykiety(o)}</div>
     ${cv}${opis}
+    ${(o.tez_na || []).length ? `<div class="tez-na">Też na: ${o.tez_na.map((t) => `<a href="${esc(t.url)}" data-akcja="otworz-link">${esc(t.zrodlo)}</a>`).join(", ")}</div>` : ""}
     ${o.url ? `<button class="link rozwin" data-akcja="rozwin">${rozw ? "▴ Zwiń szczegóły" : "▾ Obowiązki i wymagania"}</button>` : ""}
     ${rozw ? szczegolyHtml(o) : ""}
     <div class="dol">
@@ -309,6 +316,9 @@ $("#lista").addEventListener("click", async (e) => {
   } else if (akcja === "otworz") {
     e.preventDefault();
     otworz(o);
+  } else if (akcja === "otworz-link") {        // ta sama oferta w innym serwisie
+    e.preventDefault();
+    otworz({ url: e.target.closest("[data-akcja]").getAttribute("href") });
   } else if (akcja === "rozwin") {
     if (rozwiniete.has(id)) rozwiniete.delete(id);
     else { rozwiniete.add(id); if (!S.szczegoly[id] && !S.pobierane.includes(id)) await pobierzOpis(id); }

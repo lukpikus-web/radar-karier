@@ -83,6 +83,15 @@ class Aplikacja:
             baza.kopia_zapasowa(self.conn, KATALOG_KOPII)
         except Exception:
             LOG.exception("Kopia zapasowa nie wyszla")
+        try:
+            # raz: polaczenie duplikatow, ktore zebraly sie przed ta wersja (z kopia bazy)
+            if not baza.meta_get(self.conn, "duplikaty_uporzadkowane"):
+                baza.kopia_zapasowa(self.conn, KATALOG_KOPII, nazwa="przed-duplikatami")
+                ile = baza.porzadkuj_duplikaty(self.conn)
+                baza.meta_set(self.conn, "duplikaty_uporzadkowane", "1")
+                LOG.info("Polaczono duplikaty: %d", ile)
+        except Exception:
+            LOG.exception("Porzadkowanie duplikatow nie wyszlo")
         cv = self._json_meta("cv")
         self.cv = cv if isinstance(cv, dict) and (cv.get("tekst") or cv.get("umiejetnosci")) else None
         self.profil = None
@@ -453,6 +462,8 @@ class Aplikacja:
         for tytul, powod in wynik.get("odrzucone", [])[:30]:
             LOG.info("odrzucona: %s [%s]", tytul, powod)
         tekst = "Gotowe: %d nowych, %d wygasło" % (nowych, wygaszonych)
+        if wynik.get("duplikatow"):
+            tekst += ", %d duplikatów połączonych" % wynik["duplikatow"]
         if "LinkedIn" in (wynik.get("odmowy") or []):
             tekst += "  ·  LinkedIn ograniczył dostęp - spróbuję za %d h" % radar.LINKEDIN_PAUZA_GODZIN
         elif radar.WLACZONE_ZRODLA.get("LinkedIn") and "LinkedIn" not in (wynik.get("pytane_zrodla") or []):

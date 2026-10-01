@@ -53,6 +53,12 @@ Aplikacja sama NIE pobiera ofert przy starcie — tylko po kliknięciu
 
 Skróty: F5 — odśwież oferty, Ctrl+F — szukaj, Esc — wyczyść szukanie.
 
+Duplikaty: ta sama oferta w kilku serwisach (ta sama firma, stanowisko
+i miasto) to jedna karta z linkami "Też na: …". Oferta wystawiona
+ponownie zastępuje starszą wersję. Kopia oferty, którą już oznaczyłeś
+(Do aplikowania, Zaaplikowana, Odrzucona, Nieciekawa), nie pojawia się
+jako nowa — wraca dopiero po 60 dniach, z dopiskiem "wcześniej: …".
+
 
 5. NA TELEFONIE (ta sama sieć Wi-Fi)
 ------------------------------------
